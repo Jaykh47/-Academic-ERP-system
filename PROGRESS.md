@@ -1,0 +1,253 @@
+# College Attendance Tracker — Development Progress
+
+> [!NOTE]
+> This checklist tracks every phase and task. Update it after each phase is confirmed complete.
+
+---
+
+## PHASE 1: Project Initialization ✅ COMPLETE
+
+- [x] Inspect working directory
+- [x] Initialize Node.js project (`npm init`)
+- [x] Install production dependencies (express, mongoose, bcryptjs, jsonwebtoken, dotenv, cookie-parser, express-validator, helmet, cors, express-rate-limit)
+- [x] Install dev dependency (nodemon)
+- [x] Configure ES Modules (`"type": "module"` in package.json)
+- [x] Configure npm scripts (`start`, `dev`)
+- [x] Create folder structure (`src/config`, `src/models`, `src/controllers`, `src/routes`, `src/middleware`, `src/services`, `src/utils`, `tests/`)
+- [x] Create `.env` and `.env.example`
+- [x] Create `.gitignore`
+- [x] Implement `src/config/db.js` (MongoDB connection with error handling and reconnect events)
+- [x] Implement `src/config/corsOptions.js` (environment-driven CORS)
+- [x] Implement `src/utils/ApiError.js` (custom error class with statusCode, errors, isOperational)
+- [x] Implement `src/utils/ApiResponse.js` (standardized success response)
+- [x] Implement `src/middleware/errorMiddleware.js` (404 handler + global error handler)
+- [x] Implement `src/routes/healthRoutes.js` (health-check endpoint)
+- [x] Implement `src/app.js` (Express app with all middleware)
+- [x] Implement `src/server.js` (startup sequence, graceful shutdown)
+- [x] Create `README.md`
+- [x] **Tested**: Server starts successfully
+- [x] **Tested**: MongoDB connects successfully
+- [x] **Tested**: `GET /api/v1/health` returns `200` with correct data
+- [x] **Tested**: Unknown routes return `404` with consistent JSON error format
+- [x] **Tested**: Stack trace visible in development, suppressed in production
+
+---
+
+## PHASE 2: Database Architecture ✅ COMPLETE
+
+- [x] Design and implement `User.js` schema (with bcrypt pre-save hook, instance methods, `select: false` on sensitive fields)
+- [x] Design and implement `Student.js` schema (rollNumber, enrollmentNumber, status, indexes)
+- [x] Design and implement `Faculty.js` schema (employeeId, designation, subjects array)
+- [x] Design and implement `Department.js` schema (code, HOD ref, isActive)
+- [x] Design and implement `Subject.js` schema (compound unique index on code+department)
+- [x] Design and implement `AcademicSession.js` schema (pre-save hook for single isCurrent, date validation)
+- [x] Design and implement `Enrollment.js` schema (unique compound index: student+subject+session)
+- [x] Design and implement `ClassSession.js` schema (isAttendanceSubmitted lock, status flow)
+- [x] Design and implement `Attendance.js` schema (unique: student+classSession, selective denormalization)
+- [x] Design and implement `Examination.js` schema (examType, weightage, passMarks)
+- [x] Design and implement `Marks.js` schema (unique: student+examination, isAbsent flag, audit tracking)
+- [x] Design and implement `Notification.js` schema (relatedEntity polymorphic ref)
+- [x] Review all relationships and data integrity constraints
+- [x] Define indexes for frequently queried fields
+- [x] **Tested**: All 12 schemas load without errors
+- [x] **Tested**: All indexes synced to MongoDB successfully
+- [x] **Tested**: Validation script passed
+
+---
+
+## PHASE 3: Authentication ✅ COMPLETE
+
+- [x] `utils/generateToken.js` — access token, refresh token, cookie helpers, password reset token
+- [x] `middleware/validateMiddleware.js` — express-validator chains for all auth routes
+- [x] `middleware/authMiddleware.js` — protect() middleware with 5 security checks
+- [x] `middleware/roleMiddleware.js` — authorize(...roles) RBAC middleware
+- [x] `controllers/authController.js` — login, logout, refreshAccessToken, getMe, changePassword, forgotPassword, resetPassword
+- [x] `routes/authRoutes.js` — all routes with stricter rate limiter (10 req/15min)
+- [x] `app.js` — auth routes mounted
+- [x] `scripts/seedAdmin.js` — dev admin user seeder
+- [x] Fixed Mongoose 8+ async pre-hook compatibility (removed `next` from async hooks)
+- [x] **Tested**: Valid login → JWT + cookie issued ✅
+- [x] **Tested**: Wrong password → 401 "Invalid email or password" ✅
+- [x] **Tested**: Bad email format → 422 validation error with field details ✅
+- [x] **Tested**: GET /me with valid token → user profile returned ✅
+- [x] **Tested**: GET /me with no token → 401 blocked ✅
+- [x] **Tested**: GET /me with malformed JWT → 401 "Invalid token" ✅
+- [x] **Tested**: Forgot password → dev token returned, hash stored in DB ✅
+- [x] **Tested**: Reset password → new password works, old token invalidated ✅
+- [x] **Tested**: Token replay attack → 400 blocked ✅
+- [x] **Tested**: Logout → refresh token cleared from DB ✅
+- [x] **Tested**: User enumeration prevention → same response for unknown email ✅
+
+---
+
+## PHASE 4: Authorization ✅ COMPLETE
+
+- [x] Implement `roleMiddleware.js` (RBAC `authorize(...roles)`)
+- [x] Implement resource-level authorization checks
+- [x] Department-level restrictions for HOD
+- [x] Student isolation (students can only access own profile)
+- [x] IDOR protection on profile inspection and updates
+- [x] Administrative route protection (non-admins blocked with 403 Forbidden)
+
+---
+
+## PHASE 5: User Management ✅ COMPLETE
+
+- [x] `utils/pagination.js` — safe pagination helper with caps and metadata
+- [x] `services/userService.js` — atomic account creation with manual rollback
+- [x] `controllers/adminController.js` — student/faculty creation, user listing, search, filtering, account toggle
+- [x] `controllers/studentController.js` — student own profile view & field-restricted update
+- [x] `controllers/facultyController.js` — faculty/HOD own profile view & field-restricted update
+- [x] `models/index.js` — central model registration preventing MissingSchemaError
+- [x] `routes/adminRoutes.js`, `routes/studentRoutes.js`, `routes/facultyRoutes.js`
+- [x] **Tested**: Admin creates Department (BCA) & Academic Session (2024-2025) ✅
+- [x] **Tested**: Admin creates Student account + profile (atomic linking) ✅
+- [x] **Tested**: Admin creates Faculty account + profile ✅
+- [x] **Tested**: Duplicate student email blocked with 409 Conflict ✅
+- [x] **Tested**: Input validation blocks missing fields with 422 Unprocessable Entity ✅
+- [x] **Tested**: Student logs in and views own profile ✅
+- [x] **Tested**: Student blocked from admin route with 403 Forbidden ✅
+- [x] **Tested**: Admin toggles user active status (deactivation locks login, reactivation restores access) ✅
+- [x] **Tested**: User search + pagination (`search=ravi&page=1&limit=5`) ✅
+- [x] **Tested**: Faculty logs in and views own profile ✅
+- [x] **Tested**: Faculty blocked from student creation with 403 Forbidden ✅
+- [x] **Tested**: Student updates allowed personal fields (phone, address) ✅
+- [x] **Tested**: Student attempts to tamper with academic fields (semester) blocked ✅
+- [x] **Tested**: Faculty updates personal profile (phone, qualification) ✅
+- [x] **Tested**: Admin updates student academic profile (promotes semester) ✅
+
+---
+
+## PHASE 6: Academic Management ✅ COMPLETE
+
+- [x] Department management (creation, listing, validation)
+- [x] Academic session management (creation, single current session constraint)
+- [x] Subject CRUD with pagination, filtering by department and semester
+- [x] Faculty-subject assignment with bidirectional sync (`Subject.assignedFaculty` + `Faculty.subjects` array)
+- [x] Single student enrollment with duplicate prevention (`studentId` + `subjectId` + `academicSessionId`)
+- [x] Batch/Cohort enrollment using MongoDB `bulkWrite` with upsert
+- [x] Subject roster retrieval (`/enrollments/subject/:subjectId`) for faculty taking attendance
+- [x] Student enrolled courses retrieval (`/enrollments/my-subjects`)
+- [x] **Tested**: Admin creates multiple subjects (theory & practical) ✅
+- [x] **Tested**: Duplicate subject code in department blocked with 409 Conflict ✅
+- [x] **Tested**: Faculty assigned to subject; bidirectional link verified in both documents ✅
+- [x] **Tested**: Student blocked from creating subjects with 403 Forbidden ✅
+- [x] **Tested**: Single student enrolled in subject ✅
+- [x] **Tested**: Duplicate enrollment blocked with 409 Conflict ✅
+- [x] **Tested**: Batch enrollment automatically enrolls cohort and skips existing records without failing ✅
+- [x] **Tested**: Faculty retrieves full student roster for their assigned subject ✅
+- [x] **Tested**: Student queries their enrolled courses and sees full metadata ✅
+
+---
+
+## PHASE 7: Attendance Management ✅ COMPLETE
+
+- [x] Class session management (scheduling, listing, and session details)
+- [x] Session lock mechanism (`isAttendanceSubmitted: true`) preventing tampering after submission
+- [x] Attendance submission with batch enrollment verification (unregistered students rejected)
+- [x] Audit correction endpoint (`isCorrected: true`, `correctedBy`, `correctedAt`, audit remarks)
+- [x] Real-time MongoDB aggregation pipeline for subject attendance statistics
+- [x] Dynamic formula: $\text{Attendance \%} = \frac{\text{Conducted Attended}}{\text{Total Conducted}} \times 100$
+- [x] Configurable late arrival weighting policy (default 1.0 or 0.5)
+- [x] Automatic Shortage Alert threshold check ($<75\%$)
+- [x] Predictive recovery forecasting: exact count of consecutive classes required to restore $\ge 75\%$
+- [x] Student live attendance breakdown endpoint across all enrolled courses
+- [x] Department/College level Attendance Shortage Report with configurable thresholds
+- [x] **Tested**: Faculty schedules a class session with topics and timings ✅
+- [x] **Tested**: Faculty marks attendance (`present`, `absent`, `late`) and locks session ✅
+- [x] **Tested**: Submitting attendance on an already locked session blocked with 400 ✅
+- [x] **Tested**: Audit correction updates status, records modifier faculty ID, and sets timestamp ✅
+- [x] **Tested**: Aggregation pipeline accurately calculates live attendance percentages ✅
+- [x] **Tested**: Student views personal attendance breakdown across courses ✅
+- [x] **Tested**: Automatic detection of attendance shortage below 75% ✅
+- [x] **Tested**: Predictive recovery formula computes exact classes needed to regain 75% ✅
+- [x] **Tested**: Shortage report accurately flags at-risk students for administrative intervention ✅
+
+---
+
+## PHASE 8: Academic Performance ✅ COMPLETE
+
+- [x] Configurable grading scale engine (`src/utils/gradeCalculator.js`) supporting customizable percentage brackets
+- [x] Choice Based Credit System (CBCS) 10-point scale ($O, A+, A, B+, B, C, P, F$)
+- [x] Examination management across assessment types (Internal, Practical, Assignment, Semester Final)
+- [x] Validation ensuring passing marks do not exceed maximum marks
+- [x] Marks upload with enrollment verification and score ceiling validation ($\le \text{maximumMarks}$)
+- [x] Audit tracking on mark modifications (`lastModifiedBy` reference)
+- [x] Class Examination Result Sheet with statistical summary (Appeared, Passed, Failed, Pass %, Highest, Average)
+- [x] Comprehensive Student Semester Report Card with subject-wise marks, grades, and credits
+- [x] Dynamic SGPA calculation: $\text{SGPA} = \frac{\sum (\text{Grade Point} \times \text{Credits})}{\sum \text{Credits}}$
+- [x] Strict IDOR protection preventing students from viewing unauthorized student report cards
+- [x] **Tested**: Faculty creates internal test and semester final examinations ✅
+- [x] **Tested**: Pass marks higher than maximum marks rejected by input validation ✅
+- [x] **Tested**: Faculty uploads student marks with automatic letter grade assignment ✅
+- [x] **Tested**: Uploading scores exceeding maximum marks rejected with 400 Bad Request ✅
+- [x] **Tested**: Audit mark update records modified values and instructor identity ✅
+- [x] **Tested**: Class examination results sheet computes summary statistics accurately ✅
+- [x] **Tested**: Student semester report card aggregates multi-course performance and calculates exact SGPA (9.33) ✅
+- [x] **Tested**: Student attempting to inspect another student's report card blocked with 403 Forbidden ✅
+
+---
+
+## PHASE 9: Analytics & Academic Risk Detection ✅ COMPLETE
+
+- [x] Departmental Academic Analytics (student/faculty counts, conducted classes, average attendance %, exam pass rate %, avg score %)
+- [x] Subject Analytics (conducted classes, attendance distribution tiers (<75%, 75-85%, >85%), grade histogram $O \to F$)
+- [x] Semester Cohort Analytics with Attendance-Academic Correlation analysis (e.g. `LOW_ATTENDANCE_HIGH_SCORE`, `LOW_ATTENDANCE_LOW_SCORE`)
+- [x] Rule-Based Academic Risk Detection System:
+  - Multi-factor scoring engine evaluating Attendance Shortage, Exam Failures, Declining Score Trends, and Exam Absences
+  - Severity mapping: `CRITICAL` vs `MODERATE` thresholds
+  - Transparent human-readable diagnostic reasons
+  - Automated actionable mentoring recommendations
+- [x] Resource-level authorization and RBAC on analytics endpoints (Students strictly blocked with 403 Forbidden; HODs restricted to own department)
+- [x] **Tested**: Admin/HOD retrieves Department Analytics with live aggregate metrics ✅
+- [x] **Tested**: Faculty/HOD retrieves Subject Analytics with grade distribution histogram ✅
+- [x] **Tested**: Cohort comparison correlates attendance percentage against academic performance ✅
+- [x] **Tested**: Academic Risk Detection engine flags student with attendance shortage and declining score trend ✅
+- [x] **Tested**: Automatic generation of mentoring recommendations and official notice alerts ✅
+- [x] **Tested**: Students blocked from analytics and risk endpoints with 403 Forbidden ✅
+- [x] **Tested**: Multi-student cohort correctly evaluates individual student risks dynamically ✅
+
+---
+
+## PHASE 10: Notifications & Reports ✅ COMPLETE
+
+- [x] In-app notification engine with recipient tracking, unread counters, and status updates
+- [x] Automated event-driven notification dispatches:
+  - `exam_scheduled`: Triggers when faculty schedules an examination
+  - `marks_uploaded`: Triggers when faculty uploads assessment scores
+  - `attendance_shortage`: Triggers when class absence causes attendance to drop below 75%
+- [x] Notification management REST endpoints (`GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, `DELETE /notifications/:id`)
+- [x] Official Student Semester Grade Sheet / Report Card generation in PDF format (`pdfkit`)
+- [x] Subject Attendance Eligibility and Roster report generation in PDF format (`pdfkit`)
+- [x] Subject Attendance Sheet export in formatted Excel `.xlsx` workbook (`exceljs`)
+- [x] Examination Results Sheet export in styled Excel `.xlsx` workbook (`exceljs`)
+- [x] Resource-level authorization & IDOR protection on PDF transcript downloads
+- [x] **Tested**: Student receives automated `exam_scheduled` notification upon exam creation ✅
+- [x] **Tested**: Student receives automated `marks_uploaded` notification upon score upload ✅
+- [x] **Tested**: Student marks notifications as read individually and in bulk (`read-all`) ✅
+- [x] **Tested**: Generated Student Report Card PDF (`%PDF-`, 2,592 bytes) with semester summary & SGPA ✅
+- [x] **Tested**: Generated Subject Attendance Roster PDF (`%PDF-`, 2,134 bytes) with eligibility status ✅
+- [x] **Tested**: Exported Course Attendance Excel workbook (`.xlsx`, 7,147 bytes) with cell styling & column auto-fit ✅
+- [x] **Tested**: Exported Examination Results Excel workbook (`.xlsx`, 7,002 bytes) with grade evaluation ✅
+- [x] **Tested**: IDOR protection verified: Student attempting to download another student's PDF transcript blocked with 403 Forbidden ✅
+
+---
+
+## PHASE 11: Final Testing, Documentation & Postman Collection ✅ COMPLETE
+
+- [x] Automated End-to-End Test Suite runner (`tests/runAllTests.js`) executing across all 10 modules
+- [x] 54 automated assertions covering authentication, authorization, data integrity, calculations, PDF/Excel, and security
+- [x] Security testing:
+  - Role-based authorization boundaries (students blocked from admin/analytics with 403 Forbidden)
+  - Insecure Direct Object Reference (IDOR) protection on student transcripts
+  - Anti-enumeration login error responses
+  - Token expiration, tampering, and revocation
+- [x] Data integrity testing:
+  - Duplicate subject code prevention
+  - Duplicate enrollment prevention
+  - Re-marking attendance on locked sessions rejected (400 Bad Request)
+  - Exceeding maximum marks rejected (400 Bad Request)
+  - Pass marks greater than maximum marks rejected by input validation (422)
+- [x] Complete Postman collection (`backend/postman_collection.json`) with organized folders, environment variables, and sample payloads
+- [x] Comprehensive enterprise-grade API documentation in [`backend/README.md`](file:///d:/MERN%20Project/backend/README.md)
+- [x] **Tested**: `npm test` runs with **54 PASSED \| 0 FAILED** ✅

@@ -1,0 +1,547 @@
+{
+  "info": {
+    "_postman_id": "a9103e61-9c87-4322-824b-college-attendance-tracker",
+    "name": "College Attendance and Academic Progress Tracker - REST API",
+    "description": "Comprehensive Postman collection covering all endpoints for authentication, user management, course administration, attendance tracking, examination grading, analytics, and PDF/Excel exports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "facultyToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health & Diagnostics",
+      "item": [
+        {
+          "name": "Get Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Login (Admin / Faculty / Student)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@college.com\",\n  \"password\": \"Admin@1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current Logged-in User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh-token", "host": ["{{baseUrl}}"], "path": ["auth", "refresh-token"] }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@college.com\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["auth", "forgot-password"] }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword@1234\",\n  \"confirmPassword\": \"NewPassword@1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/reset-password/:token", "host": ["{{baseUrl}}"], "path": ["auth", "reset-password", ":token"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Admin@1234\",\n  \"newPassword\": \"Admin@5678\",\n  \"confirmPassword\": \"Admin@5678\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Management",
+      "item": [
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bachelor of Computer Applications\",\n  \"code\": \"BCA\",\n  \"description\": \"Undergraduate CS program\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/admin/departments", "host": ["{{baseUrl}}"], "path": ["admin", "departments"] }
+          }
+        },
+        {
+          "name": "Get All Departments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/departments", "host": ["{{baseUrl}}"], "path": ["admin", "departments"] }
+          }
+        },
+        {
+          "name": "Create Academic Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"2024-2025\",\n  \"startDate\": \"2024-07-01\",\n  \"endDate\": \"2025-06-30\",\n  \"isCurrent\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/admin/sessions", "host": ["{{baseUrl}}"], "path": ["admin", "sessions"] }
+          }
+        },
+        {
+          "name": "Get All Academic Sessions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/sessions", "host": ["{{baseUrl}}"], "path": ["admin", "sessions"] }
+          }
+        },
+        {
+          "name": "Create Student Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ravi Sharma\",\n  \"email\": \"ravi.sharma@student.college.com\",\n  \"password\": \"Student@1234\",\n  \"rollNumber\": \"BCA001\",\n  \"enrollmentNumber\": \"0801CS231001\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"admissionSessionId\": \"{{sessionId}}\",\n  \"admissionYear\": 2024,\n  \"currentSemester\": 1,\n  \"phone\": \"9876543210\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/admin/students", "host": ["{{baseUrl}}"], "path": ["admin", "students"] }
+          }
+        },
+        {
+          "name": "Get All Students (Filtered & Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/students?page=1&limit=10&semester=1", "host": ["{{baseUrl}}"], "path": ["admin", "students"] }
+          }
+        },
+        {
+          "name": "Create Faculty / HOD Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Meena Joshi\",\n  \"email\": \"meena.joshi@faculty.college.com\",\n  \"password\": \"Faculty@1234\",\n  \"role\": \"faculty\",\n  \"employeeId\": \"FAC001\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"designation\": \"Assistant Professor\",\n  \"phone\": \"9123456780\",\n  \"qualification\": \"Ph.D. Computer Science\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/admin/faculty", "host": ["{{baseUrl}}"], "path": ["admin", "faculty"] }
+          }
+        },
+        {
+          "name": "Get All Faculty",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/faculty", "host": ["{{baseUrl}}"], "path": ["admin", "faculty"] }
+          }
+        },
+        {
+          "name": "Toggle User Active Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/users/:userId/toggle-status", "host": ["{{baseUrl}}"], "path": ["admin", "users", ":userId", "toggle-status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Academic Management",
+      "item": [
+        {
+          "name": "Create Subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Database Management Systems\",\n  \"code\": \"BCA-101\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"semester\": 1,\n  \"credits\": 4,\n  \"subjectType\": \"theory\",\n  \"description\": \"Relational DB, SQL, ACID properties\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/academic/subjects", "host": ["{{baseUrl}}"], "path": ["academic", "subjects"] }
+          }
+        },
+        {
+          "name": "Get All Subjects",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/academic/subjects?semester=1", "host": ["{{baseUrl}}"], "path": ["academic", "subjects"] }
+          }
+        },
+        {
+          "name": "Assign Faculty to Subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"facultyId\": \"{{facultyId}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/academic/subjects/:subjectId/assign-faculty", "host": ["{{baseUrl}}"], "path": ["academic", "subjects", ":subjectId", "assign-faculty"] }
+          }
+        },
+        {
+          "name": "Batch Enroll Semester Cohort",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"departmentId\": \"{{departmentId}}\",\n  \"semester\": 1,\n  \"academicSessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/academic/enrollments/batch", "host": ["{{baseUrl}}"], "path": ["academic", "enrollments", "batch"] }
+          }
+        },
+        {
+          "name": "Get Subject Enrolled Students",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/academic/enrollments/subject/:subjectId", "host": ["{{baseUrl}}"], "path": ["academic", "enrollments", "subject", ":subjectId"] }
+          }
+        },
+        {
+          "name": "Get My Enrolled Courses (Student)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/academic/enrollments/my-subjects", "host": ["{{baseUrl}}"], "path": ["academic", "enrollments", "my-subjects"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Attendance Management",
+      "item": [
+        {
+          "name": "Schedule Class Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectId\": \"{{subjectId}}\",\n  \"academicSessionId\": \"{{sessionId}}\",\n  \"date\": \"2024-09-15\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\",\n  \"sessionType\": \"lecture\",\n  \"topic\": \"Relational Algebra & Normalization\",\n  \"room\": \"Lab-204\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance/sessions", "host": ["{{baseUrl}}"], "path": ["attendance", "sessions"] }
+          }
+        },
+        {
+          "name": "Submit & Lock Class Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classSessionId\": \"{{classSessionId}}\",\n  \"records\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"status\": \"present\",\n      \"remarks\": \"Good participation\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance/submit", "host": ["{{baseUrl}}"], "path": ["attendance", "submit"] }
+          }
+        },
+        {
+          "name": "Audit Correct Attendance Record",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"present\",\n  \"remarks\": \"Medical certificate approved by HOD\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/attendance/:attendanceId/correct", "host": ["{{baseUrl}}"], "path": ["attendance", ":attendanceId", "correct"] }
+          }
+        },
+        {
+          "name": "Get Subject Attendance Aggregation Summary",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/attendance/subject/:subjectId/summary", "host": ["{{baseUrl}}"], "path": ["attendance", "subject", ":subjectId", "summary"] }
+          }
+        },
+        {
+          "name": "Get My Live Attendance (Student)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/attendance/my-attendance", "host": ["{{baseUrl}}"], "path": ["attendance", "my-attendance"] }
+          }
+        },
+        {
+          "name": "Get Attendance Shortage Report (<75%)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/attendance/shortage?threshold=75", "host": ["{{baseUrl}}"], "path": ["attendance", "shortage"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Marks & Academic Performance",
+      "item": [
+        {
+          "name": "Create Examination",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Internal Assessment 1\",\n  \"examType\": \"internal_test\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"academicSessionId\": \"{{sessionId}}\",\n  \"semester\": 1,\n  \"maximumMarks\": 25,\n  \"passMarks\": 10,\n  \"weightage\": 20\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/marks/examinations", "host": ["{{baseUrl}}"], "path": ["marks", "examinations"] }
+          }
+        },
+        {
+          "name": "Submit Examination Marks",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"examinationId\": \"{{examId}}\",\n  \"marks\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"obtainedMarks\": 22,\n      \"isAbsent\": false,\n      \"remarks\": \"Excellent work on SQL queries\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/marks/submit", "host": ["{{baseUrl}}"], "path": ["marks", "submit"] }
+          }
+        },
+        {
+          "name": "Audit Update Marks Record",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"obtainedMarks\": 24,\n  \"remarks\": \"Re-evaluation approved\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/marks/:marksId", "host": ["{{baseUrl}}"], "path": ["marks", ":marksId"] }
+          }
+        },
+        {
+          "name": "Get Examination Result Sheet & Statistics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/marks/examinations/:examId/results", "host": ["{{baseUrl}}"], "path": ["marks", "examinations", ":examId", "results"] }
+          }
+        },
+        {
+          "name": "Get My Semester Report Card & SGPA (Student)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/marks/report/my-report?semester=1&academicSessionId={{sessionId}}", "host": ["{{baseUrl}}"], "path": ["marks", "report", "my-report"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Analytics & Academic Risk Detection",
+      "item": [
+        {
+          "name": "Get Department Analytics",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/analytics/department/:departmentId", "host": ["{{baseUrl}}"], "path": ["analytics", "department", ":departmentId"] }
+          }
+        },
+        {
+          "name": "Get Subject Analytics & Grade Histogram",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/analytics/subject/:subjectId", "host": ["{{baseUrl}}"], "path": ["analytics", "subject", ":subjectId"] }
+          }
+        },
+        {
+          "name": "Get Semester Cohort Correlation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/analytics/cohort?departmentId={{departmentId}}&semester=1", "host": ["{{baseUrl}}"], "path": ["analytics", "cohort"] }
+          }
+        },
+        {
+          "name": "Get Rule-Based Academic Risk Detection Report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/analytics/risk-detection?departmentId={{departmentId}}&semester=1&attendanceThreshold=75", "host": ["{{baseUrl}}"], "path": ["analytics", "risk-detection"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. In-App Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }
+          }
+        },
+        {
+          "name": "Mark Notification As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications/:notificationId/read", "host": ["{{baseUrl}}"], "path": ["notifications", ":notificationId", "read"] }
+          }
+        },
+        {
+          "name": "Mark All Notifications As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notifications", "read-all"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. PDF & Excel Reports",
+      "item": [
+        {
+          "name": "Download Student Report Card (PDF)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/pdf/my-report-card?semester=1&academicSessionId={{sessionId}}", "host": ["{{baseUrl}}"], "path": ["reports", "pdf", "my-report-card"] }
+          }
+        },
+        {
+          "name": "Download Subject Attendance Eligibility Roster (PDF)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/pdf/subject/:subjectId/attendance?academicSessionId={{sessionId}}", "host": ["{{baseUrl}}"], "path": ["reports", "pdf", "subject", ":subjectId", "attendance"] }
+          }
+        },
+        {
+          "name": "Export Subject Attendance Sheet (Excel .xlsx)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/excel/subject/:subjectId/attendance?academicSessionId={{sessionId}}", "host": ["{{baseUrl}}"], "path": ["reports", "excel", "subject", ":subjectId", "attendance"] }
+          }
+        },
+        {
+          "name": "Export Examination Results Sheet (Excel .xlsx)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{facultyToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/excel/examination/:examId/results", "host": ["{{baseUrl}}"], "path": ["reports", "excel", "examination", ":examId", "results"] }
+          }
+        }
+      ]
+    }
+  ]
+}
+
