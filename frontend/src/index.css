@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Primary Brand Accent (Downy from reference) */
+  --color-downy: #37CAB9;
+  --color-downy-hover: #2eb3a3;
+  --color-downy-light: #52dcce;
+  --color-downy-glow: rgba(55, 202, 185, 0.25);
+
+  /* Secondary Soft Accent (Melrose from reference) */
+  --color-melrose: #C0B5EE;
+  --color-melrose-light: #d6cefa;
+  --color-melrose-glow: rgba(192, 181, 238, 0.25);
+
+  /* High-visibility Accent (Jonquil from reference) */
+  --color-jonquil: #E0F58E;
+  --color-jonquil-light: #edf8ae;
+  --color-jonquil-glow: rgba(224, 245, 142, 0.25);
+
+  /* High contrast text & surface highlights (Alice Blue from reference) */
+  --color-alice: #EFF4F7;
+  --color-alice-muted: #8FA0B3;
+  --color-alice-dim: #546577;
+
+  /* Base structural backgrounds (Blue Charcoal from reference) */
+  --color-charcoal: #0D141C;
+  --color-charcoal-card: #131D28;
+  --color-charcoal-elevated: #1A2634;
+  --color-charcoal-surface: #223041;
+  --color-charcoal-border: rgba(239, 244, 247, 0.08);
+  --color-charcoal-border-light: rgba(239, 244, 247, 0.14);
+}
+
+:root {
+  font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #0D141C;
+  color: #EFF4F7;
+  font-family: 'Lexend', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars matching Blue Charcoal & Downy */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D141C;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1A2634;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #37CAB9;
+}

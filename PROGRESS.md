@@ -251,3 +251,46 @@
 - [x] Complete Postman collection (`backend/postman_collection.json`) with organized folders, environment variables, and sample payloads
 - [x] Comprehensive enterprise-grade API documentation in [`backend/README.md`](file:///d:/MERN%20Project/backend/README.md)
 - [x] **Tested**: `npm test` runs with **54 PASSED \| 0 FAILED** ✅
+
+
+---
+
+## PHASE 12: Production-Grade Frontend Application & Lexend Design System ✅ COMPLETE
+
+- [x] Initialized modern Vite + React 19 single-page application (`frontend/`)
+- [x] Installed and configured Tailwind CSS v4 with `@tailwindcss/vite`
+- [x] Configured official **Lexend** typography (Light 300, Regular 400, Medium 500, SemiBold 600, Bold 700) via Google Fonts preconnect
+- [x] Implemented brand color palette referenced from design specification:
+  - **Blue Charcoal** (`#0D141C`) — Deep modern dark surface and background
+  - **Downy** (`#37CAB9`) — Primary vibrant brand accent and active UI states
+  - **Melrose** (`#C0B5EE`) — Secondary soft lavender accent for academic metrics & badges
+  - **Jonquil** (`#E0F58E`) — High-visibility electric lime for attendance warnings, alerts & tags
+  - **Alice Blue** (`#EFF4F7`) — High-contrast text & elevated interactive card surfaces
+- [x] Centralized API layer (`src/api/`):
+  - `axiosClient.js`: Configured `/api/v1` base URL, cookie credentials, Bearer token injection, and automatic 401 token refresh queue
+  - Domain API services for Auth, Attendance, Marks, Academic, Admin, Analytics, Reports (PDF/Excel blob downloads), and Notifications
+- [x] Context Providers (`src/context/`):
+  - `AuthContext.jsx`: User state, RBAC role tracking, automatic session recovery, and **1-Click Instant Demo Role Switcher** (`Admin`, `Faculty`, `Student`)
+  - `ToastContext.jsx`: Interactive feedback system with brand glowing accents
+- [x] Navigation & Layout Architecture (`src/layouts/`, `src/components/common/`):
+  - Responsive `Navbar.jsx`: Unread notifications counter, live academic session indicator, demo role quick-switch popover, profile info
+  - Role-adaptive `Sidebar.jsx`: Dynamic navigation tailored to logged-in role
+  - Reusable components: `StatCard.jsx`, `Badge.jsx`, `Modal.jsx`, `DataTable.jsx`, `LoadingSpinner.jsx`, `ProtectedRoute.jsx`
+- [x] **Student Portal** (`src/pages/student/`):
+  - `StudentDashboard.jsx`: Overall attendance gauge, SGPA summary, enrolled courses, and One-Click PDF Report Card export
+  - `StudentAttendance.jsx`: Subject breakdown table, shortage warning (<75%), and **Predictive Class Recovery Engine** with interactive attendance simulator
+  - `StudentPerformance.jsx`: UGC 10-Point CBCS Grade Sheet, Credit weighting breakdown, and pass/fail indicators
+  - `StudentNotifications.jsx`: Real-time academic broadcasts with mark-as-read and filter controls
+- [x] **Faculty & HOD Portal** (`src/pages/faculty/`):
+  - `FacultyDashboard.jsx`: Assigned teaching loads, scheduled classes, and quick action cards
+  - `ClassAttendancePage.jsx`: Session scheduler, student roll call with "Mark All Present" shortcut, live attendance percentage counter, and **Submission Lock** protection
+  - `MarksEntryPage.jsx`: Assessment scheduler, batch score entry with ceiling validation ($\le \text{maximumMarks}$), absent flag, and dynamic CBCS grade preview
+  - `DepartmentAnalyticsPage.jsx`: Grade distribution histogram (Recharts), at-risk mentorship list, and direct Excel/PDF roster exports
+- [x] **Administrator Portal** (`src/pages/admin/`):
+  - `AdminDashboard.jsx`: System-wide KPIs, registered users breakdown, active academic session banner
+  - `UserManagementPage.jsx`: Search & filter directory, modal provisioning for Students & Faculty, and instant account status toggle (`active`/`inactive`)
+  - `AcademicSetupPage.jsx`: Multi-tab interface for Departments, Sessions, Course Subjects, Faculty Assignment, and Batch Cohort Enrollment
+  - `SystemRiskPage.jsx`: College-Wide Academic Risk Detection Engine with severe attendance deficit and academic probation alerts
+- [x] **Verification**:
+  - `npm run build` compiled 2,555 modules with **0 errors** in 1.41s
+  - Local Vite dev server active on `http://localhost:3000/` with proxy to backend API `http://localhost:5000/`
