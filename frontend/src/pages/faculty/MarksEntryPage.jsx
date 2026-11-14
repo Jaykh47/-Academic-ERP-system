@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { academicApi } from "../../api/academicApi";
 import { marksApi } from "../../api/marksApi";
+import { adminApi } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
+import { formatApiError } from "../../utils/errorHelper";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { Badge } from "../../components/common/Badge";
 import { Modal } from "../../components/common/Modal";
@@ -23,6 +25,7 @@ export const MarksEntryPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState([]);
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState(initialSubjectId || "");
   const [examinations, setExaminations] = useState([]);
   const [selectedExam, setSelectedExam] = useState(null);
@@ -33,9 +36,10 @@ export const MarksEntryPage = () => {
   // Modal for scheduling exam
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [examName, setExamName] = useState("");
-  const [examType, setExamType] = useState("mid_term");
-  const [maxMarks, setMaxMarks] = useState(100);
-  const [weightage, setWeightage] = useState(30);
+  const [examType, setExamType] = useState("semester"); // "internal_test" | "semester" | "assignment" | "practical" | "quiz" | "viva"
+  const [maxMarks, setMaxMarks] = useState(70);
+  const [passMarks, setPassMarks] = useState(28);
+  const [weightage, setWeightage] = useState(40);
 
   // Helper for UGC 10-point CBCS grading
   const calculateGrade = (score, max) => {
@@ -55,14 +59,24 @@ export const MarksEntryPage = () => {
     const fetchInit = async () => {
       try {
         setLoading(true);
-        const res = await academicApi.getSubjects();
-        const subs = res?.data?.subjects || [];
-        setSubjects(subs);
-        if (!selectedSubjectId && subs.length > 0) {
-          setSelectedSubjectId(subs[0]._id);
+        const [subsRes, sessRes] = await Promise.allSettled([
+          academicApi.getSubjects(),
+          adminApi.getSessions(),
+        ]);
+
+        if (subsRes.status === "fulfilled") {
+          const subs = subsRes.value?.data?.subjects || [];
+          setSubjects(subs);
+          if (!selectedSubjectId && subs.length > 0) {
+            setSelectedSubjectId(subs[0]._id);
+          }
+        }
+
+        if (sessRes.status === "fulfilled") {
+          setAcademicSessions(sessRes.value?.data?.sessions || []);
         }
       } catch (err) {
-        error("Failed to load course subjects");
+        error(formatApiError(err, "Failed to load subjects"));
       } finally {
         setLoading(false);
       }
@@ -113,14 +127,33 @@ export const MarksEntryPage = () => {
       return;
     }
 
+    const currentSess = academicSessions.find((s) => s.isCurrent) || academicSessions[0];
+    if (!currentSess) {
+      warning("No academic session available.");
+      return;
+    }
+
+    const selectedSubject = subjects.find((s) => s._id === selectedSubjectId);
+    const semester = selectedSubject?.semester || 1;
+    const max = parseFloat(maxMarks) || 100;
+    const pass = parseFloat(passMarks) || Math.round(max * 0.4);
+
+    if (pass > max) {
+      warning("Pass marks cannot exceed maximum marks.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       const res = await marksApi.createExamination({
         name: examName,
         examType,
         subjectId: selectedSubjectId,
-        maximumMarks: parseInt(maxMarks, 10),
-        weightage: parseInt(weightage, 10),
+        academicSessionId: currentSess._id,
+        semester,
+        maximumMarks: max,
+        passMarks: pass,
+        weightage: parseFloat(weightage) || 30,
       });
 
       success("Examination created successfully!");
@@ -133,7 +166,7 @@ export const MarksEntryPage = () => {
         setSelectedExam(created);
       }
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create examination");
+      error(formatApiError(err, "Failed to create examination"));
     } finally {
       setSubmitting(false);
     }
@@ -178,7 +211,7 @@ export const MarksEntryPage = () => {
       .filter(([_, item]) => item.isAbsent || item.marksObtained !== "")
       .map(([studentId, item]) => ({
         studentId,
-        marksObtained: item.isAbsent ? 0 : Number(item.marksObtained),
+        obtainedMarks: item.isAbsent ? 0 : Number(item.marksObtained),
         isAbsent: Boolean(item.isAbsent),
       }));
 
@@ -189,14 +222,11 @@ export const MarksEntryPage = () => {
 
     try {
       setSubmitting(true);
-      await marksApi.batchUploadMarks({
-        examinationId: selectedExam._id,
-        marks,
-      });
+      await marksApi.submitMarks(selectedExam._id, marks);
 
       success(`Successfully published grades for ${marks.length} students!`);
     } catch (err) {
-      error(err.response?.data?.message || "Failed to upload marks");
+      error(formatApiError(err, "Failed to upload marks"));
     } finally {
       setSubmitting(false);
     }
@@ -243,7 +273,7 @@ export const MarksEntryPage = () => {
           >
             {subjects.map((s) => (
               <option key={s._id} value={s._id}>
-                {s.code} — {s.name} (Credits: {s.credits})
+                {s.code} — {s.name} (Semester {s.semester}, Credits: {s.credits})
               </option>
             ))}
           </select>
@@ -264,7 +294,7 @@ export const MarksEntryPage = () => {
             {examinations.length > 0 ? (
               examinations.map((ex) => (
                 <option key={ex._id} value={ex._id}>
-                  {ex.name} — {ex.examType.toUpperCase()} (Max: {ex.maximumMarks}, Weight: {ex.weightage}%)
+                  {ex.name} — {ex.examType?.replace("_", " ")?.toUpperCase()} (Max: {ex.maximumMarks}, Weight: {ex.weightage}%)
                 </option>
               ))
             ) : (
@@ -285,6 +315,10 @@ export const MarksEntryPage = () => {
             <div>
               <span className="text-alice-dim uppercase">Max Marks:</span>{" "}
               <strong className="text-downy">{selectedExam.maximumMarks}</strong>
+            </div>
+            <div>
+              <span className="text-alice-dim uppercase">Pass Marks:</span>{" "}
+              <strong className="text-jonquil">{selectedExam.passMarks}</strong>
             </div>
             <div>
               <span className="text-alice-dim uppercase">Weightage:</span>{" "}
@@ -338,7 +372,7 @@ export const MarksEntryPage = () => {
                   const score = state.marksObtained;
                   const pct = typeof score === "number" ? Math.round((score / currentMax) * 100) : 0;
                   const { grade, gp } = isAbs ? { grade: "F", gp: 0 } : calculateGrade(score, currentMax);
-                  const isPass = grade !== "F" && !isAbs && score !== "";
+                  const isPass = grade !== "F" && !isAbs && score !== "" && score >= (selectedExam?.passMarks || 0);
 
                   return (
                     <tr key={sId || idx} className="hover:bg-charcoal-elevated/40 transition-colors">
@@ -420,7 +454,7 @@ export const MarksEntryPage = () => {
               type="text"
               value={examName}
               onChange={(e) => setExamName(e.target.value)}
-              placeholder="e.g. Mid-Term Examination Autumn 2026"
+              placeholder="e.g. End Semester Theory Examination 2026"
               required
               className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
             />
@@ -436,11 +470,12 @@ export const MarksEntryPage = () => {
                 onChange={(e) => setExamType(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
               >
-                <option value="mid_term">Mid-Term Exam</option>
-                <option value="end_term">End-Term Exam</option>
+                <option value="semester">End-Term / Semester Exam</option>
+                <option value="internal_test">Mid-Term / Internal Test</option>
                 <option value="quiz">Class Quiz</option>
-                <option value="assignment">Assignment / Project</option>
+                <option value="assignment">Assignment / Coursework</option>
                 <option value="practical">Practical / Lab Exam</option>
+                <option value="viva">Viva Voce</option>
               </select>
             </div>
 
@@ -453,40 +488,60 @@ export const MarksEntryPage = () => {
                 min="10"
                 max="200"
                 value={maxMarks}
-                onChange={(e) => setMaxMarks(e.target.value)}
+                onChange={(e) => {
+                  const m = parseFloat(e.target.value) || 0;
+                  setMaxMarks(e.target.value);
+                  setPassMarks(Math.round(m * 0.4));
+                }}
                 required
                 className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-              Semester Weightage (%)
-            </label>
-            <input
-              type="number"
-              min="5"
-              max="100"
-              value={weightage}
-              onChange={(e) => setWeightage(e.target.value)}
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Passing Marks (min 40%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={maxMarks}
+                value={passMarks}
+                onChange={(e) => setPassMarks(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Semester Weightage (%)
+              </label>
+              <input
+                type="number"
+                min="5"
+                max="100"
+                value={weightage}
+                onChange={(e) => setWeightage(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase hover:bg-melrose-light shadow-md shadow-melrose/20"
+              className="px-5 py-2 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase hover:bg-melrose-light shadow-md shadow-melrose/20 cursor-pointer"
             >
               {submitting ? "Creating..." : "Save Assessment"}
             </button>

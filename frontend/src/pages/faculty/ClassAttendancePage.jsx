@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { academicApi } from "../../api/academicApi";
 import { attendanceApi } from "../../api/attendanceApi";
+import { adminApi } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
+import { formatApiError } from "../../utils/errorHelper";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { Badge } from "../../components/common/Badge";
 import { Modal } from "../../components/common/Modal";
@@ -20,6 +22,14 @@ import {
   Sparkles,
 } from "lucide-react";
 
+const PERIOD_TIMES = {
+  "1": { start: "09:00", end: "10:00", label: "Period 1 (09:00 - 10:00)" },
+  "2": { start: "10:00", end: "11:00", label: "Period 2 (10:00 - 11:00)" },
+  "3": { start: "11:15", end: "12:15", label: "Period 3 (11:15 - 12:15)" },
+  "4": { start: "12:15", end: "13:15", label: "Period 4 (12:15 - 13:15)" },
+  "5": { start: "14:00", end: "15:00", label: "Period 5 (14:00 - 15:00)" },
+};
+
 export const ClassAttendancePage = () => {
   const [searchParams] = useSearchParams();
   const initialSubjectId = searchParams.get("subjectId");
@@ -27,6 +37,7 @@ export const ClassAttendancePage = () => {
 
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState([]);
+  const [academicSessions, setAcademicSessions] = useState([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState(initialSubjectId || "");
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -41,24 +52,34 @@ export const ClassAttendancePage = () => {
   const [newPeriod, setNewPeriod] = useState("1");
   const [newRoom, setNewRoom] = useState("LH-101");
 
-  // Load subjects
+  // Load subjects & academic sessions
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchInit = async () => {
       try {
         setLoading(true);
-        const res = await academicApi.getSubjects();
-        const subs = res?.data?.subjects || [];
-        setSubjects(subs);
-        if (!selectedSubjectId && subs.length > 0) {
-          setSelectedSubjectId(subs[0]._id);
+        const [subsRes, sessRes] = await Promise.allSettled([
+          academicApi.getSubjects(),
+          adminApi.getSessions(),
+        ]);
+
+        if (subsRes.status === "fulfilled") {
+          const subs = subsRes.value?.data?.subjects || [];
+          setSubjects(subs);
+          if (!selectedSubjectId && subs.length > 0) {
+            setSelectedSubjectId(subs[0]._id);
+          }
+        }
+
+        if (sessRes.status === "fulfilled") {
+          setAcademicSessions(sessRes.value?.data?.sessions || []);
         }
       } catch (err) {
-        error("Failed to load subjects");
+        error(formatApiError(err, "Failed to load subjects"));
       } finally {
         setLoading(false);
       }
     };
-    fetchSubjects();
+    fetchInit();
   }, []);
 
   // When subject changes, fetch sessions and enrolled students
@@ -105,28 +126,38 @@ export const ClassAttendancePage = () => {
       return;
     }
 
+    const currentSess = academicSessions.find((s) => s.isCurrent) || academicSessions[0];
+    if (!currentSess) {
+      warning("No academic session available. Please create one in Academic Setup.");
+      return;
+    }
+
+    const times = PERIOD_TIMES[newPeriod] || PERIOD_TIMES["1"];
+
     try {
       setSubmitting(true);
       const res = await attendanceApi.createClassSession({
         subjectId: selectedSubjectId,
+        academicSessionId: currentSess._id,
         date: newDate,
+        startTime: times.start,
+        endTime: times.end,
+        sessionType: "lecture",
         topic: newTopic,
-        periodNumber: parseInt(newPeriod, 10),
-        roomNumber: newRoom,
+        room: newRoom || "LH-101",
       });
 
       success("Class session scheduled successfully!");
       setIsModalOpen(false);
       setNewTopic("");
 
-      // Add to session list & select it
       const created = res?.data?.session;
       if (created) {
         setSessions((prev) => [created, ...prev]);
         setSelectedSession(created);
       }
     } catch (err) {
-      error(err.response?.data?.message || "Failed to schedule session");
+      error(formatApiError(err, "Failed to schedule class session"));
     } finally {
       setSubmitting(false);
     }
@@ -156,18 +187,16 @@ export const ClassAttendancePage = () => {
 
     const records = Object.entries(attendanceMap).map(([studentId, status]) => ({
       studentId,
-      status,
+      status: status === "excused" ? "absent" : status, // Backend requires present, absent, or late
     }));
 
     try {
       setSubmitting(true);
-      await attendanceApi.submitAttendance(selectedSession._id, {
-        records,
-      });
+      await attendanceApi.submitAttendance(selectedSession._id, records);
       success("Attendance successfully submitted & locked!");
       setSelectedSession((prev) => ({ ...prev, isAttendanceSubmitted: true }));
     } catch (err) {
-      error(err.response?.data?.message || "Failed to submit attendance");
+      error(formatApiError(err, "Failed to submit attendance"));
     } finally {
       setSubmitting(false);
     }
@@ -242,7 +271,7 @@ export const ClassAttendancePage = () => {
             {sessions.length > 0 ? (
               sessions.map((sess) => (
                 <option key={sess._id} value={sess._id}>
-                  {new Date(sess.date).toLocaleDateString()} — {sess.topic} (Period {sess.periodNumber}){" "}
+                  {new Date(sess.date).toLocaleDateString()} — {sess.topic || "Class Lecture"} ({sess.startTime} - {sess.endTime}){" "}
                   {sess.isAttendanceSubmitted ? "[LOCKED]" : "[OPEN]"}
                 </option>
               ))
@@ -259,7 +288,7 @@ export const ClassAttendancePage = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-alice">
-                {selectedSession.topic}
+                {selectedSession.topic || "Lecture Session"}
               </span>
               <Badge variant={isLocked ? "downy" : "warning"}>
                 {isLocked ? (
@@ -276,9 +305,9 @@ export const ClassAttendancePage = () => {
             <div className="flex items-center gap-3 text-xs text-alice-dim">
               <span>Date: {new Date(selectedSession.date).toLocaleDateString()}</span>
               <span>•</span>
-              <span>Period: {selectedSession.periodNumber}</span>
+              <span>Time: {selectedSession.startTime} - {selectedSession.endTime}</span>
               <span>•</span>
-              <span>Room: {selectedSession.roomNumber || "LH-101"}</span>
+              <span>Room: {selectedSession.room || "LH-101"}</span>
             </div>
           </div>
 
@@ -288,13 +317,13 @@ export const ClassAttendancePage = () => {
               <span className="text-xs text-alice-muted font-medium">Quick Mark:</span>
               <button
                 onClick={() => handleMarkAll("present")}
-                className="px-3 py-1.5 rounded-lg bg-downy/15 text-downy border border-downy/30 hover:bg-downy/25 text-xs font-bold transition-all"
+                className="px-3 py-1.5 rounded-lg bg-downy/15 text-downy border border-downy/30 hover:bg-downy/25 text-xs font-bold transition-all cursor-pointer"
               >
                 All Present
               </button>
               <button
                 onClick={() => handleMarkAll("absent")}
-                className="px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 text-xs font-bold transition-all"
+                className="px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 text-xs font-bold transition-all cursor-pointer"
               >
                 All Absent
               </button>
@@ -366,15 +395,14 @@ export const ClassAttendancePage = () => {
                         {student.user?.name || student.name || "Student"}
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {["present", "absent", "late", "excused"].map((st) => {
+                        <div className="flex items-center justify-center gap-2">
+                          {["present", "absent", "late"].map((st) => {
                             const isSelected = currentStatus === st;
                             let style = "bg-charcoal text-alice-dim hover:text-alice";
                             if (isSelected) {
                               if (st === "present") style = "bg-downy text-charcoal font-bold shadow-sm shadow-downy/30";
                               else if (st === "absent") style = "bg-rose-500 text-white font-bold shadow-sm shadow-rose-500/30";
                               else if (st === "late") style = "bg-jonquil text-charcoal font-bold shadow-sm shadow-jonquil/30";
-                              else if (st === "excused") style = "bg-melrose text-charcoal font-bold shadow-sm shadow-melrose/30";
                             }
 
                             return (
@@ -382,7 +410,7 @@ export const ClassAttendancePage = () => {
                                 key={st}
                                 disabled={isLocked}
                                 onClick={() => handleToggleStatus(sId, st)}
-                                className={`px-2.5 py-1 rounded-lg text-xs uppercase tracking-wider transition-all disabled:opacity-60 disabled:cursor-not-allowed ${style}`}
+                                className={`px-3 py-1 rounded-lg text-xs uppercase tracking-wider transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer ${style}`}
                               >
                                 {st}
                               </button>
@@ -442,18 +470,18 @@ export const ClassAttendancePage = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-                Period Number
+                Period Slot
               </label>
               <select
                 value={newPeriod}
                 onChange={(e) => setNewPeriod(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
               >
-                <option value="1">Period 1 (09:00 - 10:00)</option>
-                <option value="2">Period 2 (10:00 - 11:00)</option>
-                <option value="3">Period 3 (11:15 - 12:15)</option>
-                <option value="4">Period 4 (12:15 - 01:15)</option>
-                <option value="5">Period 5 (02:00 - 03:00)</option>
+                {Object.entries(PERIOD_TIMES).map(([num, val]) => (
+                  <option key={num} value={num}>
+                    {val.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -475,14 +503,14 @@ export const ClassAttendancePage = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20"
+              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20 cursor-pointer"
             >
               {submitting ? "Creating..." : "Create Session"}
             </button>

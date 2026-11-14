@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { adminApi } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
+import { formatApiError } from "../../utils/errorHelper";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { Badge } from "../../components/common/Badge";
 import { Modal } from "../../components/common/Modal";
@@ -24,6 +25,7 @@ export const UserManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -43,6 +45,8 @@ export const UserManagementPage = () => {
     rollNumber: "",
     enrollmentNumber: "",
     departmentId: "",
+    admissionSessionId: "",
+    admissionYear: new Date().getFullYear(),
     currentSemester: 1,
   });
 
@@ -51,6 +55,7 @@ export const UserManagementPage = () => {
     name: "",
     email: "",
     password: "",
+    role: "faculty",
     employeeId: "",
     designation: "Assistant Professor",
     departmentId: "",
@@ -68,20 +73,35 @@ export const UserManagementPage = () => {
       setTotalPages(res?.data?.pages || 1);
       setTotalUsers(res?.data?.total || 0);
     } catch (err) {
-      error("Failed to load user list");
+      error(formatApiError(err, "Failed to load user list"));
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDepartments = async () => {
+  const fetchMetadata = async () => {
     try {
-      const res = await adminApi.getDepartments();
-      const depts = res?.data?.departments || [];
-      setDepartments(depts);
-      if (depts.length > 0) {
-        setStudentForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
-        setFacultyForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
+      const [deptRes, sessRes] = await Promise.allSettled([
+        adminApi.getDepartments(),
+        adminApi.getSessions(),
+      ]);
+
+      if (deptRes.status === "fulfilled") {
+        const depts = deptRes.value?.data?.departments || [];
+        setDepartments(depts);
+        if (depts.length > 0) {
+          setStudentForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
+          setFacultyForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
+        }
+      }
+
+      if (sessRes.status === "fulfilled") {
+        const sessList = sessRes.value?.data?.sessions || [];
+        setSessions(sessList);
+        const curr = sessList.find((s) => s.isCurrent) || sessList[0];
+        if (curr) {
+          setStudentForm((prev) => ({ ...prev, admissionSessionId: curr._id }));
+        }
       }
     } catch {
       // Ignore
@@ -89,7 +109,7 @@ export const UserManagementPage = () => {
   };
 
   useEffect(() => {
-    fetchDepartments();
+    fetchMetadata();
   }, []);
 
   useEffect(() => {
@@ -116,15 +136,28 @@ export const UserManagementPage = () => {
       );
       success("User account status updated!");
     } catch (err) {
-      error("Failed to update status");
+      error(formatApiError(err, "Failed to update status"));
     }
   };
 
   const handleCreateStudent = async (e) => {
     e.preventDefault();
+    if (!studentForm.departmentId) {
+      warning("Please select a department.");
+      return;
+    }
+    if (!studentForm.admissionSessionId) {
+      warning("Please select an admission session.");
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await adminApi.createStudent(studentForm);
+      await adminApi.createStudent({
+        ...studentForm,
+        admissionYear: parseInt(studentForm.admissionYear, 10),
+        currentSemester: parseInt(studentForm.currentSemester, 10),
+      });
       success("Student account created successfully!");
       setIsStudentModalOpen(false);
       setStudentForm({
@@ -134,11 +167,13 @@ export const UserManagementPage = () => {
         rollNumber: "",
         enrollmentNumber: "",
         departmentId: departments[0]?._id || "",
+        admissionSessionId: sessions[0]?._id || "",
+        admissionYear: new Date().getFullYear(),
         currentSemester: 1,
       });
       fetchUsers();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create student");
+      error(formatApiError(err, "Failed to create student"));
     } finally {
       setSubmitting(false);
     }
@@ -146,6 +181,11 @@ export const UserManagementPage = () => {
 
   const handleCreateFaculty = async (e) => {
     e.preventDefault();
+    if (!facultyForm.departmentId) {
+      warning("Please select a department.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       await adminApi.createFaculty(facultyForm);
@@ -155,13 +195,14 @@ export const UserManagementPage = () => {
         name: "",
         email: "",
         password: "",
+        role: "faculty",
         employeeId: "",
         designation: "Assistant Professor",
         departmentId: departments[0]?._id || "",
       });
       fetchUsers();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create faculty");
+      error(formatApiError(err, "Failed to create faculty"));
     } finally {
       setSubmitting(false);
     }
@@ -284,7 +325,7 @@ export const UserManagementPage = () => {
                         {u.role !== "admin" ? (
                           <button
                             onClick={() => handleToggleStatus(u._id)}
-                            className={`p-1.5 rounded-lg border transition-all ${
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                               isActive
                                 ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
                                 : "bg-downy/10 border-downy/20 text-downy hover:bg-downy/20"
@@ -326,14 +367,14 @@ export const UserManagementPage = () => {
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40 cursor-pointer"
               >
                 Previous
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40 cursor-pointer"
               >
                 Next
               </button>
@@ -387,7 +428,7 @@ export const UserManagementPage = () => {
                 required
                 value={studentForm.password}
                 onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
-                placeholder="Student@1234"
+                placeholder="Student@1234 (min 8 chars)"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
               />
             </div>
@@ -441,7 +482,7 @@ export const UserManagementPage = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-                Semester
+                Current Semester
               </label>
               <select
                 value={studentForm.currentSemester}
@@ -457,18 +498,51 @@ export const UserManagementPage = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Admission Academic Session
+              </label>
+              <select
+                value={studentForm.admissionSessionId}
+                onChange={(e) => setStudentForm({ ...studentForm, admissionSessionId: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              >
+                {sessions.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name} {s.isCurrent ? "(Current)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Admission Year
+              </label>
+              <input
+                type="number"
+                min="2000"
+                max={new Date().getFullYear() + 1}
+                required
+                value={studentForm.admissionYear}
+                onChange={(e) => setStudentForm({ ...studentForm, admissionYear: parseInt(e.target.value, 10) })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setIsStudentModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20"
+              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20 cursor-pointer"
             >
               {submitting ? "Creating..." : "Save Student"}
             </button>
@@ -521,13 +595,13 @@ export const UserManagementPage = () => {
                 required
                 value={facultyForm.password}
                 onChange={(e) => setFacultyForm({ ...facultyForm, password: e.target.value })}
-                placeholder="Faculty@1234"
+                placeholder="Faculty@1234 (min 8 chars)"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
                 Employee ID
@@ -543,6 +617,19 @@ export const UserManagementPage = () => {
             </div>
             <div>
               <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Role
+              </label>
+              <select
+                value={facultyForm.role}
+                onChange={(e) => setFacultyForm({ ...facultyForm, role: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+              >
+                <option value="faculty">Faculty Member</option>
+                <option value="hod">Head of Department (HOD)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
                 Designation
               </label>
               <select
@@ -553,7 +640,9 @@ export const UserManagementPage = () => {
                 <option value="Assistant Professor">Assistant Professor</option>
                 <option value="Associate Professor">Associate Professor</option>
                 <option value="Professor">Professor</option>
-                <option value="HOD">Head of Department (HOD)</option>
+                <option value="Lecturer">Lecturer</option>
+                <option value="Lab Instructor">Lab Instructor</option>
+                <option value="Guest Faculty">Guest Faculty</option>
               </select>
             </div>
           </div>
@@ -579,14 +668,14 @@ export const UserManagementPage = () => {
             <button
               type="button"
               onClick={() => setIsFacultyModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase hover:bg-melrose-light shadow-md shadow-melrose/20"
+              className="px-5 py-2 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase hover:bg-melrose-light shadow-md shadow-melrose/20 cursor-pointer"
             >
               {submitting ? "Creating..." : "Save Faculty"}
             </button>

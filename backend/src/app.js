@@ -40,9 +40,10 @@ app.use(cors(corsOptions));
 // a single IP address can make within a time window.
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10000,
   standardHeaders: true,  // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,   // Disable the `X-RateLimit-*` headers (deprecated)
+  skip: () => process.env.NODE_ENV === "development", // Disable rate limiting in local dev
   message: {
     success: false,
     message: "Too many requests from this IP. Please try again after 15 minutes.",

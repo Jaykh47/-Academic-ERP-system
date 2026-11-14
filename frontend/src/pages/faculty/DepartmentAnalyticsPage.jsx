@@ -339,3 +339,4 @@ export const DepartmentAnalyticsPage = () => {
     </div>
   );
 };
+

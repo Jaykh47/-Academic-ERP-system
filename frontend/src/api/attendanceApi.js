@@ -12,15 +12,18 @@ export const attendanceApi = {
     return res.data;
   },
 
-  // Attendance submission (bulk)
-  submitAttendance: async (sessionId, attendanceData) => {
-    const res = await axiosClient.post(`/attendance/sessions/${sessionId}/records`, attendanceData);
+  // Attendance submission (bulk) - posts to /attendance/submit with classSessionId and records array
+  submitAttendance: async (classSessionId, records) => {
+    const res = await axiosClient.post("/attendance/submit", {
+      classSessionId,
+      records,
+    });
     return res.data;
   },
 
   // Audit update single attendance record
   updateAttendanceRecord: async (attendanceId, updateData) => {
-    const res = await axiosClient.patch(`/attendance/records/${attendanceId}`, updateData);
+    const res = await axiosClient.patch(`/attendance/${attendanceId}/correct`, updateData);
     return res.data;
   },
 

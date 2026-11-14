@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { adminApi } from "../../api/adminApi";
 import { academicApi } from "../../api/academicApi";
 import { useToast } from "../../context/ToastContext";
+import { formatApiError } from "../../utils/errorHelper";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { Badge } from "../../components/common/Badge";
 import { Modal } from "../../components/common/Modal";
@@ -120,7 +121,7 @@ export const AcademicSetupPage = () => {
       setDeptForm({ name: "", code: "" });
       loadData();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create department");
+      error(formatApiError(err, "Failed to create department"));
     } finally {
       setSubmitting(false);
     }
@@ -135,7 +136,7 @@ export const AcademicSetupPage = () => {
       setModalType(null);
       loadData();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create session");
+      error(formatApiError(err, "Failed to create session"));
     } finally {
       setSubmitting(false);
     }
@@ -154,11 +155,11 @@ export const AcademicSetupPage = () => {
         departmentId: departments[0]?._id || "",
         semester: 1,
         credits: 4,
-        type: "theory",
+        subjectType: "theory",
       });
       loadData();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to create subject");
+      error(formatApiError(err, "Failed to create subject"));
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +174,7 @@ export const AcademicSetupPage = () => {
       setModalType(null);
       loadData();
     } catch (err) {
-      error(err.response?.data?.message || "Failed to assign faculty");
+      error(formatApiError(err, "Failed to assign faculty"));
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +193,7 @@ export const AcademicSetupPage = () => {
       success(res?.message || "Cohort enrolled into subject successfully!");
       setModalType(null);
     } catch (err) {
-      error(err.response?.data?.message || "Batch enrollment failed");
+      error(formatApiError(err, "Batch enrollment failed"));
     } finally {
       setSubmitting(false);
     }
@@ -767,3 +768,4 @@ export const AcademicSetupPage = () => {
     </div>
   );
 };
+

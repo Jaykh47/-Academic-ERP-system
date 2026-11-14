@@ -12,9 +12,12 @@ export const marksApi = {
     return res.data;
   },
 
-  // Batch marks upload with validation
-  batchUploadMarks: async (batchData) => {
-    const res = await axiosClient.post("/marks/batch", batchData);
+  // Marks upload - posts to /marks/submit with { examinationId, marks: [{ studentId, obtainedMarks, isAbsent, remarks }] }
+  submitMarks: async (examinationId, marks) => {
+    const res = await axiosClient.post("/marks/submit", {
+      examinationId,
+      marks,
+    });
     return res.data;
   },
 
@@ -26,7 +29,7 @@ export const marksApi = {
 
   // Class examination result sheet
   getExaminationResultSheet: async (examinationId) => {
-    const res = await axiosClient.get(`/marks/examinations/${examinationId}/result-sheet`);
+    const res = await axiosClient.get(`/marks/examinations/${examinationId}/results`);
     return res.data;
   },
 };
