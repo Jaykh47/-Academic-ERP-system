@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   Award,
   Bell,
+  User,
   Users,
   BookOpen,
   AlertTriangle,

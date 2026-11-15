@@ -19,6 +19,7 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
+  User,
 } from "lucide-react";
 
 export const StudentDashboard = () => {
