@@ -58,8 +58,8 @@ export const ClassAttendancePage = () => {
       try {
         setLoading(true);
         const [subsRes, sessRes] = await Promise.allSettled([
-          academicApi.getSubjects(),
-          adminApi.getSessions(),
+          academicApi.getMyAssignedSubjects(),
+          academicApi.getSessions(),
         ]);
 
         if (subsRes.status === "fulfilled") {
@@ -107,8 +107,11 @@ export const ClassAttendancePage = () => {
         // Pre-fill attendance map as "present" by default
         const initialMap = {};
         enrolled.forEach((item) => {
-          const sId = item.student?._id || item.student?.id || item._id;
-          initialMap[sId] = "present";
+          const studentObj = item.studentId || item.student || item;
+          const sId = studentObj._id || studentObj.id;
+          if (sId) {
+            initialMap[sId] = "present";
+          }
         });
         setAttendanceMap(initialMap);
       } catch (err) {
@@ -166,8 +169,11 @@ export const ClassAttendancePage = () => {
   const handleMarkAll = (status) => {
     const updated = {};
     students.forEach((item) => {
-      const sId = item.student?._id || item.student?.id || item._id;
-      updated[sId] = status;
+      const studentObj = item.studentId || item.student || item;
+      const sId = studentObj._id || studentObj.id;
+      if (sId) {
+        updated[sId] = status;
+      }
     });
     setAttendanceMap(updated);
   };
@@ -381,18 +387,20 @@ export const ClassAttendancePage = () => {
             <tbody className="divide-y divide-charcoal-border/50 text-xs">
               {students.length > 0 ? (
                 students.map((item, idx) => {
-                  const student = item.student || item;
-                  const sId = student._id || student.id || item._id;
+                  const student = item.studentId || item.student || item;
+                  const sId = student._id || student.id;
                   const currentStatus = attendanceMap[sId] || "present";
+                  const studentName = student.userId?.name || student.name || "Student";
+                  const rollNumber = student.rollNumber || `BCA-0${idx + 1}`;
 
                   return (
                     <tr key={sId || idx} className="hover:bg-charcoal-elevated/40 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-alice-dim">{idx + 1}</td>
                       <td className="py-3.5 px-4 font-mono text-downy font-semibold">
-                        {student.rollNumber || `BCA-0${idx + 1}`}
+                        {rollNumber}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-alice">
-                        {student.user?.name || student.name || "Student"}
+                        {studentName}
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-center gap-2">

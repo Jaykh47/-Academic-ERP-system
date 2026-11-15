@@ -28,10 +28,9 @@ export const FacultyDashboard = () => {
     const fetchFacultyData = async () => {
       try {
         setLoading(true);
-        // Fetch subjects
-        const subjectsRes = await academicApi.getSubjects();
+        // Fetch subjects assigned strictly to this faculty member
+        const subjectsRes = await academicApi.getMyAssignedSubjects();
         const allSubs = subjectsRes?.data?.subjects || [];
-        // Filter or display subjects assigned to this faculty if available
         setSubjects(allSubs);
 
         // Fetch recent class sessions

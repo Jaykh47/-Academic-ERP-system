@@ -13,6 +13,7 @@ import { StudentDashboard } from "./pages/student/StudentDashboard";
 import { StudentAttendance } from "./pages/student/StudentAttendance";
 import { StudentPerformance } from "./pages/student/StudentPerformance";
 import { StudentNotifications } from "./pages/student/StudentNotifications";
+import { StudentEnrollmentPage } from "./pages/student/StudentEnrollmentPage";
 
 // Faculty & HOD Pages
 import { FacultyDashboard } from "./pages/faculty/FacultyDashboard";
@@ -50,6 +51,7 @@ export default function App() {
             <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
               <Route element={<AppLayout />}>
                 <Route path="/student" element={<StudentDashboard />} />
+                <Route path="/student/enrollment" element={<StudentEnrollmentPage />} />
                 <Route path="/student/attendance" element={<StudentAttendance />} />
                 <Route path="/student/performance" element={<StudentPerformance />} />
                 <Route path="/student/notifications" element={<StudentNotifications />} />

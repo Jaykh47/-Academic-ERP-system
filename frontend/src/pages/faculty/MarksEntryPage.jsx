@@ -60,8 +60,8 @@ export const MarksEntryPage = () => {
       try {
         setLoading(true);
         const [subsRes, sessRes] = await Promise.allSettled([
-          academicApi.getSubjects(),
-          adminApi.getSessions(),
+          academicApi.getMyAssignedSubjects(),
+          academicApi.getSessions(),
         ]);
 
         if (subsRes.status === "fulfilled") {
@@ -108,8 +108,11 @@ export const MarksEntryPage = () => {
         // Initialize marks map
         const initial = {};
         enrolled.forEach((item) => {
-          const sId = item.student?._id || item.student?.id || item._id;
-          initial[sId] = { marksObtained: "", isAbsent: false };
+          const studentObj = item.studentId || item.student || item;
+          const sId = studentObj._id || studentObj.id;
+          if (sId) {
+            initial[sId] = { marksObtained: "", isAbsent: false };
+          }
         });
         setMarksMap(initial);
       } catch (err) {
@@ -365,8 +368,10 @@ export const MarksEntryPage = () => {
             <tbody className="divide-y divide-charcoal-border/50 text-xs">
               {students.length > 0 ? (
                 students.map((item, idx) => {
-                  const student = item.student || item;
-                  const sId = student._id || student.id || item._id;
+                  const student = item.studentId || item.student || item;
+                  const sId = student._id || student.id;
+                  const studentName = student.userId?.name || student.name || "Student";
+                  const rollNumber = student.rollNumber || `BCA-0${idx + 1}`;
                   const state = marksMap[sId] || { marksObtained: "", isAbsent: false };
                   const isAbs = state.isAbsent;
                   const score = state.marksObtained;
@@ -377,10 +382,10 @@ export const MarksEntryPage = () => {
                   return (
                     <tr key={sId || idx} className="hover:bg-charcoal-elevated/40 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-downy font-semibold">
-                        {student.rollNumber || `BCA-0${idx + 1}`}
+                        {rollNumber}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-alice">
-                        {student.user?.name || student.name || "Student"}
+                        {studentName}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <input

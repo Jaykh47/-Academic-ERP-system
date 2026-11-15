@@ -9,6 +9,11 @@ import {
   batchEnrollSemesterService,
   getEnrolledStudentsForSubjectService,
   getEnrolledSubjectsForStudentService,
+  getEnrollmentTimelineService,
+  getAvailableSubjectsForStudentService,
+  selfEnrollStudentService,
+  selfDropSubjectService,
+  getMyAssignedSubjectsService,
 } from "../services/academicService.js";
 
 /**
@@ -206,4 +211,54 @@ export const getStudentEnrolledSubjects = async (req, res, next) => {
     next(error);
   }
 };
+
+// ── DIGICAMPUS COURSE REGISTRATION & TIMELINE ───────────────────────────────
+
+export const getEnrollmentWindow = async (req, res, next) => {
+  try {
+    const timeline = await getEnrollmentTimelineService();
+    res.status(200).json(new ApiResponse(200, "Enrollment window retrieved.", timeline));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAvailableSubjects = async (req, res, next) => {
+  try {
+    const data = await getAvailableSubjectsForStudentService(req.user._id);
+    res.status(200).json(new ApiResponse(200, "Available subjects retrieved successfully.", data));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const selfEnrollSubjects = async (req, res, next) => {
+  try {
+    const { subjectIds } = req.body;
+    const result = await selfEnrollStudentService(req.user._id, subjectIds);
+    res.status(200).json(new ApiResponse(200, "Subjects enrolled successfully.", result));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const selfDropSubject = async (req, res, next) => {
+  try {
+    const { subjectId } = req.params;
+    const result = await selfDropSubjectService(req.user._id, subjectId);
+    res.status(200).json(new ApiResponse(200, "Subject dropped successfully.", result));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyAssignedSubjects = async (req, res, next) => {
+  try {
+    const subjects = await getMyAssignedSubjectsService(req.user);
+    res.status(200).json(new ApiResponse(200, "Assigned subjects retrieved successfully.", { subjects }));
+  } catch (error) {
+    next(error);
+  }
+};
+
 

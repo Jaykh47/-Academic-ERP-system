@@ -55,6 +55,12 @@ export const AcademicSetupPage = () => {
     subjectId: "",
     academicSessionId: "",
   });
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [windowForm, setWindowForm] = useState({
+    isEnrollmentOpen: false,
+    enrollmentStartDate: "",
+    enrollmentEndDate: "",
+  });
 
   const loadData = async () => {
     try {
@@ -199,6 +205,36 @@ export const AcademicSetupPage = () => {
     }
   };
 
+  const handleOpenEnrollmentModal = (sess) => {
+    setSelectedSession(sess);
+    setWindowForm({
+      isEnrollmentOpen: sess.isEnrollmentOpen || false,
+      enrollmentStartDate: sess.enrollmentStartDate
+        ? new Date(sess.enrollmentStartDate).toISOString().split("T")[0]
+        : "",
+      enrollmentEndDate: sess.enrollmentEndDate
+        ? new Date(sess.enrollmentEndDate).toISOString().split("T")[0]
+        : "",
+    });
+    setModalType("enrollmentWindow");
+  };
+
+  const handleUpdateEnrollmentWindow = async (e) => {
+    e.preventDefault();
+    if (!selectedSession) return;
+    try {
+      setSubmitting(true);
+      await adminApi.updateEnrollmentWindow(selectedSession._id, windowForm);
+      success("Enrollment registration window updated successfully!");
+      setModalType(null);
+      loadData();
+    } catch (err) {
+      error(formatApiError(err, "Failed to update enrollment window"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner label="Loading institutional academic structures..." />;
   }
@@ -321,15 +357,39 @@ export const AcademicSetupPage = () => {
           {sessions.map((sess) => (
             <div
               key={sess._id}
-              className="p-5 rounded-2xl bg-charcoal-card border border-charcoal-border hover:border-downy/30 transition-all space-y-3 shadow-lg"
+              className="p-5 rounded-2xl bg-charcoal-card border border-charcoal-border hover:border-downy/30 transition-all space-y-4 shadow-lg flex flex-col justify-between"
             >
-              <div className="flex items-start justify-between">
-                <h3 className="text-base font-bold text-alice">{sess.name}</h3>
-                {sess.isCurrent && <Badge variant="downy">CURRENT ACTIVE</Badge>}
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-base font-bold text-alice">{sess.label || sess.name}</h3>
+                  <div className="flex flex-col items-end gap-1">
+                    {sess.isCurrent && <Badge variant="downy">CURRENT ACTIVE</Badge>}
+                    <Badge variant={sess.isEnrollmentOpen ? "success" : "neutral"}>
+                      {sess.isEnrollmentOpen ? "REGISTRATION OPEN" : "REGISTRATION CLOSED"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-xs text-alice-muted space-y-1">
+                  <div>Academic Year: {new Date(sess.startDate).toLocaleDateString()} — {new Date(sess.endDate).toLocaleDateString()}</div>
+                  {sess.enrollmentStartDate && sess.enrollmentEndDate ? (
+                    <div className="text-downy font-medium">
+                      Timeline: {new Date(sess.enrollmentStartDate).toLocaleDateString()} to {new Date(sess.enrollmentEndDate).toLocaleDateString()}
+                    </div>
+                  ) : (
+                    <div className="text-alice-dim">Timeline: Not scheduled</div>
+                  )}
+                </div>
               </div>
-              <div className="text-xs text-alice-muted space-y-1">
-                <div>Start: {new Date(sess.startDate).toLocaleDateString()}</div>
-                <div>End: {new Date(sess.endDate).toLocaleDateString()}</div>
+
+              <div className="pt-2 border-t border-charcoal-border/50">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEnrollmentModal(sess)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border hover:border-melrose text-alice font-semibold text-xs tracking-wider cursor-pointer transition-all"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-melrose" />
+                  Manage Enrollment Window
+                </button>
               </div>
             </div>
           ))}
@@ -761,6 +821,80 @@ export const AcademicSetupPage = () => {
               className="px-5 py-2 rounded-xl bg-jonquil text-charcoal font-bold text-xs uppercase hover:bg-jonquil-light shadow-md shadow-jonquil/20"
             >
               {submitting ? "Enrolling..." : "Execute Batch Enrollment"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 6: Configure Enrollment Window */}
+      <Modal
+        isOpen={modalType === "enrollmentWindow"}
+        onClose={() => setModalType(null)}
+        title="Student Registration Window"
+        subtitle={`Configure DigiCampus course enrollment timeline for ${selectedSession?.label || selectedSession?.name || "Session"}`}
+      >
+        <form onSubmit={handleUpdateEnrollmentWindow} className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-charcoal-elevated border border-charcoal-border space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-alice">Registration Status</p>
+                <p className="text-[11px] text-alice-muted">Allow students to self-enroll/drop semester courses</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={windowForm.isEnrollmentOpen}
+                  onChange={(e) => setWindowForm({ ...windowForm, isEnrollmentOpen: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-charcoal rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-downy"></div>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Window Start Date
+              </label>
+              <input
+                type="date"
+                value={windowForm.enrollmentStartDate}
+                onChange={(e) => setWindowForm({ ...windowForm, enrollmentStartDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+                Window End Date
+              </label>
+              <input
+                type="date"
+                value={windowForm.enrollmentEndDate}
+                onChange={(e) => setWindowForm({ ...windowForm, enrollmentEndDate: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              />
+            </div>
+          </div>
+
+          <div className="text-[11px] text-alice-dim leading-relaxed bg-charcoal p-3 rounded-xl border border-charcoal-border/50">
+            💡 When enabled, students can register for their semester subjects through the DigiCampus Course Registration portal. Faculty will immediately see the newly registered students on their attendance rosters.
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setModalType(null)}
+              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted text-xs font-bold"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20"
+            >
+              {submitting ? "Saving..." : "Save Timeline"}
             </button>
           </div>
         </form>

@@ -12,6 +12,7 @@ import {
   createDepartment,
   getAllSessions,
   createSession,
+  updateEnrollmentWindow,
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -48,8 +49,9 @@ router.get("/departments",    getAllDepartments);
 router.post("/departments",   createDepartmentValidation, validate, createDepartment);
 
 // ── ACADEMIC SESSION MANAGEMENT ───────────────────────────────────────────────
-router.get("/sessions",    getAllSessions);
-router.post("/sessions",   createSessionValidation, validate, createSession);
+router.get("/sessions",                                 getAllSessions);
+router.post("/sessions", createSessionValidation, validate, createSession);
+router.patch("/sessions/:sessionId/enrollment-window",    updateEnrollmentWindow);
 
 export default router;
 

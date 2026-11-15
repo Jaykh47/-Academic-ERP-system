@@ -65,4 +65,9 @@ export const adminApi = {
     const res = await axiosClient.post("/admin/sessions", sessionData);
     return res.data;
   },
+
+  updateEnrollmentWindow: async (sessionId, data) => {
+    const res = await axiosClient.patch(`/admin/sessions/${sessionId}/enrollment-window`, data);
+    return res.data;
+  },
 };

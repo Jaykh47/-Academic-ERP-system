@@ -400,13 +400,25 @@ export const getAllSessions = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const createSession = async (req, res, next) => {
   try {
-    const { label, startDate, endDate, isCurrent } = req.body;
+    const {
+      label,
+      name,
+      startDate,
+      endDate,
+      isCurrent,
+      isEnrollmentOpen,
+      enrollmentStartDate,
+      enrollmentEndDate,
+    } = req.body;
 
     const session = await AcademicSession.create({
-      label,
+      label: label || name,
       startDate,
       endDate,
       isCurrent: isCurrent || false,
+      isEnrollmentOpen: isEnrollmentOpen || false,
+      enrollmentStartDate: enrollmentStartDate || null,
+      enrollmentEndDate: enrollmentEndDate || null,
     });
 
     res.status(201).json(
@@ -416,4 +428,31 @@ export const createSession = async (req, res, next) => {
     next(error);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/v1/admin/sessions/:sessionId/enrollment-window
+// Set enrollment timeline / open/close registration for students
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateEnrollmentWindow = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const { isEnrollmentOpen, enrollmentStartDate, enrollmentEndDate } = req.body;
+
+    const session = await AcademicSession.findById(sessionId);
+    if (!session) throw new ApiError(404, "Academic session not found.");
+
+    if (isEnrollmentOpen !== undefined) session.isEnrollmentOpen = Boolean(isEnrollmentOpen);
+    if (enrollmentStartDate !== undefined) session.enrollmentStartDate = enrollmentStartDate;
+    if (enrollmentEndDate !== undefined) session.enrollmentEndDate = enrollmentEndDate;
+
+    await session.save();
+
+    res.status(200).json(
+      new ApiResponse(200, "Enrollment window timeline updated successfully.", { session })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 

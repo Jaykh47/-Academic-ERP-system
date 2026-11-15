@@ -52,4 +52,35 @@ export const academicApi = {
     const res = await axiosClient.get(`/academic/enrollments/student/${studentId}`);
     return res.data;
   },
+
+  // DigiCampus Course Registration & Isolation
+  getEnrollmentWindow: async () => {
+    const res = await axiosClient.get("/academic/enrollment-window");
+    return res.data;
+  },
+
+  getSessions: async () => {
+    const res = await axiosClient.get("/academic/sessions");
+    return res.data;
+  },
+
+  getAvailableSubjects: async () => {
+    const res = await axiosClient.get("/academic/available-subjects");
+    return res.data;
+  },
+
+  selfEnrollSubjects: async (subjectIds) => {
+    const res = await axiosClient.post("/academic/enrollments/self", { subjectIds });
+    return res.data;
+  },
+
+  selfDropSubject: async (subjectId) => {
+    const res = await axiosClient.delete(`/academic/enrollments/self/${subjectId}`);
+    return res.data;
+  },
+
+  getMyAssignedSubjects: async () => {
+    const res = await axiosClient.get("/academic/my-assigned-subjects");
+    return res.data;
+  },
 };

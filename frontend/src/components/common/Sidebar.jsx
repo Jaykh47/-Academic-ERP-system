@@ -25,6 +25,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       case "student":
         return [
           { to: "/student", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/student/enrollment", label: "Course Registration", icon: BookOpen },
           { to: "/student/attendance", label: "Attendance & Recovery", icon: CalendarCheck },
           { to: "/student/performance", label: "Grades & SGPA", icon: Award },
           { to: "/student/notifications", label: "Notifications", icon: Bell },

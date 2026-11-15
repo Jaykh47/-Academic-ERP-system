@@ -41,7 +41,7 @@ export const DepartmentAnalyticsPage = () => {
       try {
         setLoading(true);
         const [subsRes, riskRes] = await Promise.allSettled([
-          academicApi.getSubjects(),
+          academicApi.getMyAssignedSubjects(),
           analyticsApi.getAcademicRiskReport(),
         ]);
 

@@ -279,3 +279,233 @@ export const getEnrolledSubjectsForStudentService = async (studentId, academicSe
   return enrollments;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DIGICAMPUS COURSE REGISTRATION & TIMELINE SERVICES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check if the course enrollment window is currently open
+ */
+export const getEnrollmentTimelineService = async () => {
+  const session = await AcademicSession.findOne({ isCurrent: true, isActive: true });
+  if (!session) {
+    return {
+      isOpen: false,
+      session: null,
+      message: "No active academic session found.",
+    };
+  }
+
+  const now = new Date();
+  let isOpen = Boolean(session.isEnrollmentOpen);
+
+  if (session.enrollmentStartDate && session.enrollmentEndDate) {
+    const start = new Date(session.enrollmentStartDate);
+    const end = new Date(session.enrollmentEndDate);
+    isOpen = isOpen && now >= start && now <= end;
+  }
+
+  return {
+    isOpen,
+    session,
+    timeline: {
+      startDate: session.enrollmentStartDate,
+      endDate: session.enrollmentEndDate,
+      isExplicitlyOpen: session.isEnrollmentOpen,
+    },
+  };
+};
+
+/**
+ * Get all subjects offered for the student's department and semester,
+ * indicating which ones the student is currently enrolled in.
+ */
+export const getAvailableSubjectsForStudentService = async (userId) => {
+  const student = await Student.findOne({ userId }).populate("departmentId", "name code");
+  if (!student) throw new ApiError(404, "Student profile not found.");
+
+  const session = await AcademicSession.findOne({ isCurrent: true, isActive: true });
+  if (!session) throw new ApiError(404, "Active academic session not found.");
+
+  // Get subjects offered for student's department & semester
+  const offeredSubjects = await Subject.find({
+    departmentId: student.departmentId._id,
+    semester: student.currentSemester,
+    isActive: true,
+  })
+    .populate("departmentId", "name code")
+    .populate({
+      path: "assignedFaculty",
+      select: "employeeId designation userId",
+      populate: { path: "userId", select: "name email" },
+    })
+    .sort({ code: 1 });
+
+  // Get active enrollments for this student in this session
+  const activeEnrollments = await Enrollment.find({
+    studentId: student._id,
+    academicSessionId: session._id,
+    status: "active",
+  });
+
+  const enrolledSubjectIds = new Set(activeEnrollments.map((e) => e.subjectId.toString()));
+
+  const subjectsWithStatus = offeredSubjects.map((sub) => {
+    const subObj = sub.toObject();
+    return {
+      ...subObj,
+      isEnrolled: enrolledSubjectIds.has(sub._id.toString()),
+    };
+  });
+
+  const timelineStatus = await getEnrollmentTimelineService();
+
+  return {
+    student: {
+      _id: student._id,
+      rollNumber: student.rollNumber,
+      enrollmentNumber: student.enrollmentNumber,
+      currentSemester: student.currentSemester,
+      department: student.departmentId,
+    },
+    session,
+    enrollmentWindow: timelineStatus,
+    subjects: subjectsWithStatus,
+    totalOffered: offeredSubjects.length,
+    enrolledCount: enrolledSubjectIds.size,
+  };
+};
+
+/**
+ * Student self-enrolls in one or more subjects during the open timeline window
+ */
+export const selfEnrollStudentService = async (userId, subjectIds) => {
+  if (!Array.isArray(subjectIds) || subjectIds.length === 0) {
+    throw new ApiError(400, "Please select at least one subject to enroll.");
+  }
+
+  // 1. Verify Enrollment Window
+  const timeline = await getEnrollmentTimelineService();
+  if (!timeline.isOpen) {
+    const datesMsg =
+      timeline.session?.enrollmentStartDate && timeline.session?.enrollmentEndDate
+        ? ` Registration window: ${new Date(timeline.session.enrollmentStartDate).toLocaleDateString()} to ${new Date(timeline.session.enrollmentEndDate).toLocaleDateString()}.`
+        : "";
+    throw new ApiError(
+      403,
+      `Subject enrollment is currently closed by administration.${datesMsg}`
+    );
+  }
+
+  // 2. Verify Student
+  const student = await Student.findOne({ userId });
+  if (!student) throw new ApiError(404, "Student profile not found.");
+
+  const session = timeline.session;
+
+  // 3. Verify Subjects belong to student's department and semester
+  const validSubjects = await Subject.find({
+    _id: { $in: subjectIds },
+    departmentId: student.departmentId,
+    semester: student.currentSemester,
+    isActive: true,
+  });
+
+  if (validSubjects.length === 0) {
+    throw new ApiError(400, "None of the selected subjects are valid for your department and semester.");
+  }
+
+  // 4. Enroll using bulkWrite upsert
+  const bulkOps = validSubjects.map((sub) => ({
+    updateOne: {
+      filter: {
+        studentId: student._id,
+        subjectId: sub._id,
+        academicSessionId: session._id,
+      },
+      update: {
+        $set: {
+          studentId: student._id,
+          subjectId: sub._id,
+          academicSessionId: session._id,
+          semester: student.currentSemester,
+          status: "active",
+          enrolledAt: new Date(),
+        },
+      },
+      upsert: true,
+    },
+  }));
+
+  await Enrollment.bulkWrite(bulkOps);
+
+  const updatedEnrollments = await getEnrolledSubjectsForStudentService(student._id, session._id);
+
+  return {
+    enrolledCount: validSubjects.length,
+    enrolledSubjects: updatedEnrollments,
+  };
+};
+
+/**
+ * Student drops a subject during the open enrollment window
+ */
+export const selfDropSubjectService = async (userId, subjectId) => {
+  const timeline = await getEnrollmentTimelineService();
+  if (!timeline.isOpen) {
+    throw new ApiError(403, "Subject changes are locked. The enrollment window is closed.");
+  }
+
+  const student = await Student.findOne({ userId });
+  if (!student) throw new ApiError(404, "Student profile not found.");
+
+  const session = timeline.session;
+
+  const result = await Enrollment.findOneAndUpdate(
+    {
+      studentId: student._id,
+      subjectId,
+      academicSessionId: session._id,
+    },
+    { status: "dropped" },
+    { new: true }
+  );
+
+  if (!result) {
+    throw new ApiError(404, "Enrollment record not found.");
+  }
+
+  return { message: "Subject dropped successfully." };
+};
+
+/**
+ * Faculty Isolation: Returns strictly the subjects taught by the logged-in faculty
+ */
+export const getMyAssignedSubjectsService = async (user) => {
+  if (user.role === "admin") {
+    return await Subject.find({ isActive: true })
+      .populate("departmentId", "name code")
+      .populate({
+        path: "assignedFaculty",
+        select: "employeeId designation userId",
+        populate: { path: "userId", select: "name email" },
+      })
+      .sort({ semester: 1, name: 1 });
+  }
+
+  const faculty = await Faculty.findOne({ userId: user._id });
+  if (!faculty) {
+    return [];
+  }
+
+  const subjects = await Subject.find({
+    $or: [{ assignedFaculty: faculty._id }, { _id: { $in: faculty.subjects || [] } }],
+    isActive: true,
+  })
+    .populate("departmentId", "name code")
+    .sort({ semester: 1, name: 1 });
+
+  return subjects;
+};
+
+

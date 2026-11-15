@@ -148,6 +148,29 @@ export const StudentDashboard = () => {
         </div>
       )}
 
+      {/* Course Registration Prompt Banner (if 0 enrolled subjects) */}
+      {enrolledSubjects.length === 0 && (
+        <div className="p-4 rounded-2xl bg-downy/10 border border-downy/30 flex items-center justify-between gap-3.5 shadow-lg shadow-downy/5">
+          <div className="flex items-center gap-3">
+            <BookOpen className="w-5 h-5 text-downy shrink-0" />
+            <div>
+              <h4 className="text-xs font-bold text-alice">
+                Semester Course Registration Pending
+              </h4>
+              <p className="text-xs text-alice-muted mt-0.5">
+                You are currently not enrolled in any subjects for this semester.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/student/enrollment"
+            className="px-4 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-md shadow-downy/20 shrink-0"
+          >
+            Register Courses &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

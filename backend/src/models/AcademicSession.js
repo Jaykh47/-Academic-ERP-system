@@ -56,6 +56,22 @@ const academicSessionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // DigiCampus Course Registration Window & Timeline set by Admin
+    isEnrollmentOpen: {
+      type: Boolean,
+      default: false,
+    },
+
+    enrollmentStartDate: {
+      type: Date,
+      default: null,
+    },
+
+    enrollmentEndDate: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
