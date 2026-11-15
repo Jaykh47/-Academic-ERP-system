@@ -43,21 +43,19 @@ export const StudentDashboard = () => {
         setEnrolledSubjects(subjects);
 
         // Fetch attendance summary
-        if (studentId) {
-          try {
-            const attRes = await attendanceApi.getStudentSummary(studentId);
-            setAttendanceSummary(attRes?.data?.summary || null);
-          } catch {
-            // Attendance summary may be empty if no classes held yet
-          }
+        try {
+          const attRes = await attendanceApi.getStudentSummary(studentId);
+          setAttendanceSummary(attRes?.data?.summary || null);
+        } catch {
+          // Attendance summary may be empty if no classes held yet
+        }
 
-          // Fetch marks & SGPA
-          try {
-            const perfRes = await marksApi.getStudentPerformance(studentId);
-            setPerformance(perfRes?.data || null);
-          } catch {
-            // Performance may be empty if no exams graded yet
-          }
+        // Fetch marks & SGPA
+        try {
+          const perfRes = await marksApi.getStudentPerformance(studentId);
+          setPerformance(perfRes?.data || null);
+        } catch {
+          // Performance may be empty if no exams graded yet
         }
       } catch (err) {
         // Tolerant to initial empty state

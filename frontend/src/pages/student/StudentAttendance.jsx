@@ -27,7 +27,7 @@ export const StudentAttendance = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!studentId) {
+      if (!studentId && user?.role !== "student") {
         setLoading(false);
         return;
       }
@@ -52,7 +52,7 @@ export const StudentAttendance = () => {
     };
 
     fetchData();
-  }, [studentId]);
+  }, [studentId, user?.role]);
 
   if (loading) {
     return <LoadingSpinner label="Calculating attendance statistics and recovery models..." />;

@@ -320,3 +320,27 @@
   - Successfully verified admin timeline setup $\rightarrow$ student self-registration $\rightarrow$ faculty subject isolation $\rightarrow$ class session scheduling $\rightarrow$ attendance marking and locking with 200 OK.
   - Frontend compiled with 0 errors via `npm run build`.
   - Pushed to GitHub repository on `main`.
+
+---
+
+## Phase 9: Attendance Roster Names & Student Attendance/Marks Visibility ✅ COMPLETE
+
+- [x] **Fixed Student Names Fallback ("Student") in Faculty Portals**:
+  - Root Cause: In `ClassAttendancePage.jsx` and `MarksEntryPage.jsx`, evaluating `item.studentId || item.student || item` resolved to `item.studentId` (an ObjectId/string) rather than an object, causing `student.userId?.name` and `student.rollNumber` to return `undefined` and fall back to `"Student"` and generic roll numbers.
+  - Fix: Implemented multi-layered student extraction:
+    - ID: `(item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) || item.student?._id || item._id`
+    - Student Object: `(item.student && typeof item.student === "object" ? item.student : null) || (item.studentId && typeof item.studentId === "object" ? item.studentId : null) || item`
+    - Name: `item.studentName || studentObj?.name || studentObj?.userId?.name || studentObj?.user?.name || item.name || "Student"`
+    - Roll Number: `item.rollNumber || studentObj?.rollNumber || item.student?.rollNumber || ""`
+  - Added session history inspection: viewing submitted sessions automatically loads recorded attendance statuses into badges.
+  - Added examination results inspection: selecting an existing examination automatically populates scores and absentees from previous uploads.
+- [x] **Fixed Student Attendance & Marks Visibility in Student Portal**:
+  - Root Cause 1 (Null Profile): In `backend/src/controllers/authController.js`, `login` and `getMe` only returned `{ user }` without querying or attaching the corresponding `Student` or `Faculty` document. This caused `AuthContext.jsx` to set `profile = null`, leaving `studentId` `undefined` on all student views.
+  - Fix 1: Added `getProfileForUser` helper in `authController.js` populating `departmentId` and `admissionSessionId` for students, and `departmentId` and `subjects` for faculty. `login` and `getMe` now return `profile` directly.
+  - Root Cause 2 (Missing Routes): Frontend called `GET /attendance/student/:studentId/summary`, `GET /attendance/student/:studentId/predictive-recovery`, and `GET /marks/student/:studentId/performance`, which did not exist on the backend and threw 404s.
+  - Fix 2: Implemented `getStudentAttendanceSummary`, `getPredictiveRecovery`, `getStudentPerformance`, and student self shortcuts (`/my-summary`, `/my-recovery`, `/my-performance`) returning exact data shapes expected by `StudentDashboard.jsx`, `StudentAttendance.jsx`, and `StudentPerformance.jsx`.
+  - Root Cause 3 (Unenrolled Subjects Omission): Aggregation pipelines in `attendanceService.js` now merge all actively registered subjects from `Enrollment`, ensuring students always see all registered courses even before the first lecture is held.
+- [x] **Verification**:
+  - Automated E2E verification test passed: student login returns profile with student `_id` and roll number `BCA001`, attendance summary returns 200 with 3 registered courses, predictive recovery returns 200, academic performance returns 200 with SGPA (9.56) and 4 examination records.
+  - Faculty roster verification: enrolled students returned with full names ("Ravi Sharma", "Priya Patel") and roll numbers ("BCA001", "BCA002").
+  - Frontend production build (`npm run build`) succeeded with 0 errors in 2.72s.

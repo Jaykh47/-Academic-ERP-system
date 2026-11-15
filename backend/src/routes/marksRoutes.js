@@ -8,6 +8,8 @@ import {
   getExaminationResults,
   getStudentSemesterReport,
   getMySemesterReport,
+  getStudentPerformance,
+  getMyPerformance,
 } from "../controllers/marksController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorize } from "../middleware/roleMiddleware.js";
@@ -68,6 +70,18 @@ router.patch(
 );
 
 // ── SEMESTER REPORT CARDS ────────────────────────────────────────────────────
+router.get(
+  "/my-performance",
+  authorize("student"),
+  getMyPerformance
+);
+
+router.get(
+  "/student/:studentId/performance",
+  authorize("admin", "hod", "faculty", "student"),
+  getStudentPerformance
+);
+
 router.get(
   "/report/my-report",
   authorize("student"),

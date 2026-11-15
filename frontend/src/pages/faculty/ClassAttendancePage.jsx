@@ -107,8 +107,11 @@ export const ClassAttendancePage = () => {
         // Pre-fill attendance map as "present" by default
         const initialMap = {};
         enrolled.forEach((item) => {
-          const studentObj = item.studentId || item.student || item;
-          const sId = studentObj._id || studentObj.id;
+          const sId =
+            (item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) ||
+            item.student?._id ||
+            item.student?.id ||
+            item._id;
           if (sId) {
             initialMap[sId] = "present";
           }
@@ -121,6 +124,35 @@ export const ClassAttendancePage = () => {
 
     fetchSubjectData();
   }, [selectedSubjectId]);
+
+  // Load existing attendance records if the selected session was already submitted
+  useEffect(() => {
+    if (!selectedSession?._id) return;
+    if (selectedSession.isAttendanceSubmitted) {
+      const fetchSessionRecords = async () => {
+        try {
+          const res = await attendanceApi.getClassSessionById(selectedSession._id);
+          const records = res?.data?.attendanceRecords || [];
+          if (records.length > 0) {
+            const map = {};
+            records.forEach((r) => {
+              const sid =
+                r.studentId?._id ||
+                (typeof r.studentId === "string" ? r.studentId : null) ||
+                r.student?._id;
+              if (sid) {
+                map[sid] = r.status;
+              }
+            });
+            setAttendanceMap((prev) => ({ ...prev, ...map }));
+          }
+        } catch {
+          // Tolerant
+        }
+      };
+      fetchSessionRecords();
+    }
+  }, [selectedSession?._id, selectedSession?.isAttendanceSubmitted]);
 
   const handleCreateSession = async (e) => {
     e.preventDefault();
@@ -169,8 +201,11 @@ export const ClassAttendancePage = () => {
   const handleMarkAll = (status) => {
     const updated = {};
     students.forEach((item) => {
-      const studentObj = item.studentId || item.student || item;
-      const sId = studentObj._id || studentObj.id;
+      const sId =
+        (item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) ||
+        item.student?._id ||
+        item.student?.id ||
+        item._id;
       if (sId) {
         updated[sId] = status;
       }
@@ -387,11 +422,28 @@ export const ClassAttendancePage = () => {
             <tbody className="divide-y divide-charcoal-border/50 text-xs">
               {students.length > 0 ? (
                 students.map((item, idx) => {
-                  const student = item.studentId || item.student || item;
-                  const sId = student._id || student.id;
+                  const sId =
+                    (item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) ||
+                    item.student?._id ||
+                    item.student?.id ||
+                    item._id;
+                  const studentObj =
+                    (item.student && typeof item.student === "object" ? item.student : null) ||
+                    (item.studentId && typeof item.studentId === "object" ? item.studentId : null) ||
+                    item;
                   const currentStatus = attendanceMap[sId] || "present";
-                  const studentName = student.userId?.name || student.name || "Student";
-                  const rollNumber = student.rollNumber || `BCA-0${idx + 1}`;
+                  const studentName =
+                    item.studentName ||
+                    studentObj?.name ||
+                    studentObj?.userId?.name ||
+                    studentObj?.user?.name ||
+                    item.name ||
+                    "Student";
+                  const rollNumber =
+                    item.rollNumber ||
+                    studentObj?.rollNumber ||
+                    item.student?.rollNumber ||
+                    `BCA-00${idx + 1}`;
 
                   return (
                     <tr key={sId || idx} className="hover:bg-charcoal-elevated/40 transition-colors">

@@ -248,13 +248,29 @@ export const getEnrolledStudentsForSubjectService = async (subjectId, academicSe
   const enrollments = await Enrollment.find(filter)
     .populate({
       path: "studentId",
-      select: "rollNumber enrollmentNumber currentSemester userId",
       populate: { path: "userId", select: "name email isActive" },
     })
     .populate("academicSessionId", "label")
     .sort({ "studentId.rollNumber": 1 });
 
-  return enrollments;
+  return enrollments.map((e) => {
+    const obj = e.toObject ? e.toObject() : e;
+    const student = obj.studentId || {};
+    const user = student.userId || {};
+    return {
+      ...obj,
+      studentId: student._id || obj.studentId,
+      student: {
+        ...student,
+        name: user.name || "",
+        email: user.email || "",
+      },
+      studentName: user.name || "",
+      studentEmail: user.email || "",
+      rollNumber: student.rollNumber || "",
+      enrollmentNumber: student.enrollmentNumber || "",
+    };
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

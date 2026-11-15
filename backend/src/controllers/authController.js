@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Student from "../models/Student.js";
+import Faculty from "../models/Faculty.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import {
@@ -35,6 +37,21 @@ const sanitizeUser = (user) => ({
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
+
+const getProfileForUser = async (user) => {
+  if (!user) return null;
+  if (user.role === "student") {
+    return await Student.findOne({ userId: user._id })
+      .populate("departmentId", "name code")
+      .populate("admissionSessionId", "label year");
+  }
+  if (user.role === "faculty" || user.role === "hod") {
+    return await Faculty.findOne({ userId: user._id })
+      .populate("departmentId", "name code")
+      .populate("subjects", "name code semester credits");
+  }
+  return null;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/auth/login
@@ -76,9 +93,12 @@ export const login = async (req, res, next) => {
     // Set both tokens in HTTP-only cookies
     setAuthCookies(res, accessToken, refreshToken);
 
+    const profile = await getProfileForUser(user);
+
     res.status(200).json(
       new ApiResponse(200, "Logged in successfully.", {
         user: sanitizeUser(user),
+        profile,
         accessToken, // Also send in body for Postman / API clients
       })
     );
@@ -198,9 +218,12 @@ export const getMe = async (req, res, next) => {
       return next(new ApiError(404, "User not found."));
     }
 
+    const profile = await getProfileForUser(user);
+
     res.status(200).json(
       new ApiResponse(200, "User profile fetched successfully.", {
         user: sanitizeUser(user),
+        profile,
       })
     );
   } catch (error) {

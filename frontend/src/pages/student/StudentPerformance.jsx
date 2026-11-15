@@ -27,7 +27,7 @@ export const StudentPerformance = () => {
 
   useEffect(() => {
     const fetchPerformance = async () => {
-      if (!studentId) {
+      if (!studentId && user?.role !== "student") {
         setLoading(false);
         return;
       }
@@ -43,7 +43,7 @@ export const StudentPerformance = () => {
     };
 
     fetchPerformance();
-  }, [studentId]);
+  }, [studentId, user?.role]);
 
   const handleDownloadReportCard = async () => {
     try {

@@ -23,7 +23,8 @@ export const marksApi = {
 
   // Student academic performance & SGPA
   getStudentPerformance: async (studentId, params = {}) => {
-    const res = await axiosClient.get(`/marks/student/${studentId}/performance`, { params });
+    const endpoint = studentId ? `/marks/student/${studentId}/performance` : `/marks/my-performance`;
+    const res = await axiosClient.get(endpoint, { params });
     return res.data;
   },
 

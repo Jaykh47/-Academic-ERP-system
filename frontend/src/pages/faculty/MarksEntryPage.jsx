@@ -108,8 +108,11 @@ export const MarksEntryPage = () => {
         // Initialize marks map
         const initial = {};
         enrolled.forEach((item) => {
-          const studentObj = item.studentId || item.student || item;
-          const sId = studentObj._id || studentObj.id;
+          const sId =
+            (item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) ||
+            item.student?._id ||
+            item.student?.id ||
+            item._id;
           if (sId) {
             initial[sId] = { marksObtained: "", isAbsent: false };
           }
@@ -122,6 +125,35 @@ export const MarksEntryPage = () => {
 
     fetchExamsAndStudents();
   }, [selectedSubjectId]);
+
+  // Load existing results sheet if an exam is selected
+  useEffect(() => {
+    if (!selectedExam?._id) return;
+    const fetchExistingMarks = async () => {
+      try {
+        const res = await marksApi.getExaminationResultSheet(selectedExam._id);
+        const results = res?.data?.results || [];
+        if (results.length > 0) {
+          const loadedMap = {};
+          results.forEach((r) => {
+            const sid =
+              r.studentId?._id ||
+              (typeof r.studentId === "string" ? r.studentId : null);
+            if (sid) {
+              loadedMap[sid] = {
+                marksObtained: r.isAbsent ? "" : r.obtainedMarks,
+                isAbsent: Boolean(r.isAbsent),
+              };
+            }
+          });
+          setMarksMap((prev) => ({ ...prev, ...loadedMap }));
+        }
+      } catch {
+        // Tolerant
+      }
+    };
+    fetchExistingMarks();
+  }, [selectedExam?._id]);
 
   const handleCreateExam = async (e) => {
     e.preventDefault();
@@ -368,10 +400,27 @@ export const MarksEntryPage = () => {
             <tbody className="divide-y divide-charcoal-border/50 text-xs">
               {students.length > 0 ? (
                 students.map((item, idx) => {
-                  const student = item.studentId || item.student || item;
-                  const sId = student._id || student.id;
-                  const studentName = student.userId?.name || student.name || "Student";
-                  const rollNumber = student.rollNumber || `BCA-0${idx + 1}`;
+                  const sId =
+                    (item.studentId && typeof item.studentId === "object" ? item.studentId._id : item.studentId) ||
+                    item.student?._id ||
+                    item.student?.id ||
+                    item._id;
+                  const studentObj =
+                    (item.student && typeof item.student === "object" ? item.student : null) ||
+                    (item.studentId && typeof item.studentId === "object" ? item.studentId : null) ||
+                    item;
+                  const studentName =
+                    item.studentName ||
+                    studentObj?.name ||
+                    studentObj?.userId?.name ||
+                    studentObj?.user?.name ||
+                    item.name ||
+                    "Student";
+                  const rollNumber =
+                    item.rollNumber ||
+                    studentObj?.rollNumber ||
+                    item.student?.rollNumber ||
+                    `BCA-00${idx + 1}`;
                   const state = marksMap[sId] || { marksObtained: "", isAbsent: false };
                   const isAbs = state.isAbsent;
                   const score = state.marksObtained;

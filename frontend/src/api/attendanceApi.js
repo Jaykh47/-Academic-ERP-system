@@ -7,6 +7,11 @@ export const attendanceApi = {
     return res.data;
   },
 
+  getClassSessionById: async (sessionId) => {
+    const res = await axiosClient.get(`/attendance/sessions/${sessionId}`);
+    return res.data;
+  },
+
   createClassSession: async (sessionData) => {
     const res = await axiosClient.post("/attendance/sessions", sessionData);
     return res.data;
@@ -29,13 +34,15 @@ export const attendanceApi = {
 
   // Student-specific metrics & shortage alerts
   getStudentSummary: async (studentId, params = {}) => {
-    const res = await axiosClient.get(`/attendance/student/${studentId}/summary`, { params });
+    const endpoint = studentId ? `/attendance/student/${studentId}/summary` : `/attendance/my-summary`;
+    const res = await axiosClient.get(endpoint, { params });
     return res.data;
   },
 
   // Predictive attendance recovery forecast
   getPredictiveRecovery: async (studentId, params = {}) => {
-    const res = await axiosClient.get(`/attendance/student/${studentId}/predictive-recovery`, { params });
+    const endpoint = studentId ? `/attendance/student/${studentId}/predictive-recovery` : `/attendance/my-recovery`;
+    const res = await axiosClient.get(endpoint, { params });
     return res.data;
   },
 };

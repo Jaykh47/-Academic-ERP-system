@@ -391,12 +391,42 @@ export const getStudentFullAttendanceService = async (studentId, academicSession
 
   const subjectRecords = await Attendance.aggregate(pipeline);
 
+  // Also query active enrollments for the student so all enrolled courses appear
+  const enrollments = await Enrollment.find({
+    studentId: student._id,
+    status: "active",
+    ...(sessionFilter.academicSessionId ? { academicSessionId: sessionFilter.academicSessionId } : {}),
+  }).populate("subjectId");
+
+  const recordsMap = new Map();
+  subjectRecords.forEach((r) => recordsMap.set(r.subjectId.toString(), r));
+
+  const allSubjectEntries = [...subjectRecords];
+  enrollments.forEach((enr) => {
+    if (enr.subjectId && !recordsMap.has(enr.subjectId._id.toString())) {
+      allSubjectEntries.push({
+        subjectId: enr.subjectId._id,
+        name: enr.subjectId.name,
+        code: enr.subjectId.code,
+        credits: enr.subjectId.credits,
+        semester: enr.subjectId.semester,
+        totalPresent: 0,
+        totalLate: 0,
+        totalAbsent: 0,
+        totalRecorded: 0,
+      });
+      recordsMap.set(enr.subjectId._id.toString(), true);
+    }
+  });
+
+  allSubjectEntries.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
+
   // For each subject, fetch total conducted classes
   let totalConductedAllSubjects = 0;
   let totalAttendedAllSubjects = 0;
 
   const subjectBreakdown = await Promise.all(
-    subjectRecords.map(async (record) => {
+    allSubjectEntries.map(async (record) => {
       const conducted = await ClassSession.countDocuments({
         subjectId: record.subjectId,
         isAttendanceSubmitted: true,
@@ -405,7 +435,7 @@ export const getStudentFullAttendanceService = async (studentId, academicSession
 
       const weightedPresent = record.totalPresent + record.totalLate * lateWeight;
       const percentage = conducted > 0 ? Number(((weightedPresent / conducted) * 100).toFixed(2)) : 100.0;
-      const isShortage = percentage < 75.0;
+      const isShortage = percentage < 75.0 && conducted > 0;
 
       let classesNeededFor75 = 0;
       if (isShortage && conducted > 0) {

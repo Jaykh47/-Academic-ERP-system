@@ -1,7 +1,8 @@
-import { Examination, Student } from "../models/index.js";
+import { Examination, Student, Marks, Enrollment } from "../models/index.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 import { getPaginationParams, buildPaginationMeta } from "../utils/pagination.js";
+import { calculateGrade, calculateSGPA } from "../utils/gradeCalculator.js";
 import {
   createExaminationService,
   getExaminationsService,
@@ -168,6 +169,154 @@ export const getMySemesterReport = async (req, res, next) => {
     res.status(200).json(
       new ApiResponse(200, "Personal semester report card generated successfully.", report)
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStudentPerformance = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const { semester, academicSessionId } = req.query;
+
+    const student = await Student.findById(studentId)
+      .populate("userId", "name email")
+      .populate("departmentId", "name code");
+
+    if (!student) {
+      throw new ApiError(404, "Student profile not found.");
+    }
+
+    // Access control: student can only view their own performance
+    if (req.user.role === "student" && student.userId._id.toString() !== req.user._id.toString()) {
+      throw new ApiError(403, "Access denied. You can only view your own academic performance.");
+    }
+
+    const targetSemester = semester ? parseInt(semester) : student.currentSemester;
+
+    const marksFilter = { studentId: student._id };
+    if (academicSessionId) {
+      marksFilter.academicSessionId = academicSessionId;
+    }
+
+    const marksRecords = await Marks.find(marksFilter)
+      .populate({
+        path: "examinationId",
+        populate: { path: "subjectId", select: "name code credits semester" },
+      })
+      .populate("subjectId", "name code credits semester")
+      .populate("academicSessionId", "label year");
+
+    // Filter by semester if specified or student semester
+    const filteredMarks = marksRecords.filter((m) => {
+      const sem = m.subjectId?.semester || m.examinationId?.semester;
+      return !targetSemester || !sem || sem === targetSemester;
+    });
+
+    const formattedRecords = filteredMarks.map((m) => {
+      const exam = m.examinationId || {};
+      const subject = m.subjectId || exam.subjectId || {};
+      const maxMarks = exam.maximumMarks || 100;
+      const evaluation = calculateGrade(m.obtainedMarks, maxMarks);
+      const isAbsent = Boolean(m.isAbsent);
+      const isPass = !isAbsent && m.obtainedMarks >= (exam.passMarks || 40);
+
+      return {
+        _id: m._id,
+        examinationId: exam._id,
+        examination: {
+          _id: exam._id,
+          name: exam.name || "Assessment",
+          examType: exam.examType || "Exam",
+          maximumMarks: maxMarks,
+          passMarks: exam.passMarks || 40,
+          weightage: exam.weightage || 30,
+          subject: {
+            _id: subject._id,
+            name: subject.name || "Subject",
+            code: subject.code || "",
+          },
+        },
+        subject: {
+          _id: subject._id,
+          name: subject.name || "Subject",
+          code: subject.code || "",
+          credits: subject.credits || 3,
+          semester: subject.semester,
+        },
+        marksObtained: m.obtainedMarks,
+        score: m.obtainedMarks,
+        maximumMarks: maxMarks,
+        percentage: evaluation.percentage,
+        grade: isAbsent ? "F" : evaluation.grade,
+        gradePoint: isAbsent ? 0 : evaluation.gradePoint,
+        isPassed: isPass,
+        isAbsent,
+        remarks: m.remarks,
+      };
+    });
+
+    // Subject mapping to compute SGPA
+    const subjectCourseMap = new Map();
+    formattedRecords.forEach((rec) => {
+      const sId = rec.subject?._id?.toString() || "unknown";
+      if (!subjectCourseMap.has(sId)) {
+        subjectCourseMap.set(sId, {
+          credits: rec.subject?.credits || 3,
+          gradePoints: [],
+        });
+      }
+      subjectCourseMap.get(sId).gradePoints.push(rec.gradePoint);
+    });
+
+    // Also include active enrollments to count registered credits
+    const enrollments = await Enrollment.find({
+      studentId: student._id,
+      status: "active",
+      ...(targetSemester ? { semester: targetSemester } : {}),
+    }).populate("subjectId");
+
+    let totalCredits = 0;
+    enrollments.forEach((e) => {
+      if (e.subjectId?.credits) totalCredits += e.subjectId.credits;
+    });
+
+    if (totalCredits === 0) {
+      subjectCourseMap.forEach((val) => {
+        totalCredits += val.credits;
+      });
+    }
+
+    const coursesForSgpa = [];
+    subjectCourseMap.forEach((val) => {
+      const avgGp =
+        val.gradePoints.length > 0
+          ? val.gradePoints.reduce((a, b) => a + b, 0) / val.gradePoints.length
+          : 0;
+      coursesForSgpa.push({ credits: val.credits, gradePoint: avgGp });
+    });
+
+    const calculatedSgpa = coursesForSgpa.length > 0 ? calculateSGPA(coursesForSgpa) : null;
+
+    res.status(200).json(
+      new ApiResponse(200, "Student academic performance fetched successfully.", {
+        sgpa: calculatedSgpa ?? "N/A",
+        totalCredits,
+        records: formattedRecords,
+        marks: formattedRecords,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyPerformance = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) throw new ApiError(404, "Student profile not found.");
+    req.params.studentId = student._id.toString();
+    return getStudentPerformance(req, res, next);
   } catch (error) {
     next(error);
   }

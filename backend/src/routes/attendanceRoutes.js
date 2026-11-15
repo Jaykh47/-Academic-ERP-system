@@ -8,6 +8,10 @@ import {
   getSubjectAttendanceSummary,
   getMyAttendance,
   getStudentAttendance,
+  getStudentAttendanceSummary,
+  getPredictiveRecovery,
+  getMyAttendanceSummary,
+  getMyPredictiveRecovery,
   getAttendanceShortageReport,
 } from "../controllers/attendanceController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -73,6 +77,30 @@ router.get(
   "/my-attendance",
   authorize("student"),
   getMyAttendance
+);
+
+router.get(
+  "/my-summary",
+  authorize("student"),
+  getMyAttendanceSummary
+);
+
+router.get(
+  "/my-recovery",
+  authorize("student"),
+  getMyPredictiveRecovery
+);
+
+router.get(
+  "/student/:studentId/summary",
+  authorize("admin", "hod", "faculty", "student"),
+  getStudentAttendanceSummary
+);
+
+router.get(
+  "/student/:studentId/predictive-recovery",
+  authorize("admin", "hod", "faculty", "student"),
+  getPredictiveRecovery
 );
 
 router.get(

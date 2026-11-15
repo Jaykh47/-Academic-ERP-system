@@ -91,13 +91,29 @@ export const getClassSessionById = async (req, res, next) => {
 
     let attendanceRecords = [];
     if (session.isAttendanceSubmitted) {
-      attendanceRecords = await Attendance.find({ classSessionId: session._id })
+      const records = await Attendance.find({ classSessionId: session._id })
         .populate({
           path: "studentId",
-          select: "rollNumber enrollmentNumber userId",
-          populate: { path: "userId", select: "name email" },
+          populate: { path: "userId", select: "name email isActive" },
         })
         .sort({ "studentId.rollNumber": 1 });
+
+      attendanceRecords = records.map((r) => {
+        const obj = r.toObject ? r.toObject() : r;
+        const student = obj.studentId || {};
+        const user = student.userId || {};
+        return {
+          ...obj,
+          student: {
+            ...student,
+            name: user.name || "",
+            email: user.email || "",
+          },
+          studentName: user.name || "",
+          studentEmail: user.email || "",
+          rollNumber: student.rollNumber || "",
+        };
+      });
     }
 
     res.status(200).json(
@@ -202,6 +218,113 @@ export const getStudentAttendance = async (req, res, next) => {
     res.status(200).json(
       new ApiResponse(200, "Student attendance report fetched successfully.", breakdown)
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getStudentAttendanceSummary = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const { academicSessionId, lateWeight } = req.query;
+
+    if (req.user.role === "student") {
+      const student = await Student.findById(studentId);
+      if (!student || student.userId.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "Access denied. You can only view your own attendance.");
+      }
+    }
+
+    const breakdown = await getStudentFullAttendanceService(
+      studentId,
+      academicSessionId,
+      lateWeight ? parseFloat(lateWeight) : 1.0
+    );
+
+    const summary = {
+      overallPercentage: breakdown.overallStats?.overallPercentage ?? 100,
+      totalClasses: breakdown.overallStats?.totalConductedClasses ?? 0,
+      totalAttended: breakdown.overallStats?.totalAttendedClasses ?? 0,
+      isShortage: breakdown.overallStats?.isOverallShortage ?? false,
+      subjectWise: (breakdown.subjectBreakdown || []).map((s) => ({
+        subjectId: s.subjectId,
+        subjectName: s.name,
+        subjectCode: s.code,
+        semester: s.semester,
+        credits: s.credits,
+        total: s.totalConductedClasses || 0,
+        attended: (s.totalPresent || 0) + (s.totalLate || 0),
+        present: s.totalPresent || 0,
+        late: s.totalLate || 0,
+        absent: s.totalAbsent || 0,
+        percentage: s.attendancePercentage ?? 100,
+        isShortage: s.isShortage ?? false,
+        classesNeededFor75: s.classesNeededFor75 || 0,
+      })),
+    };
+
+    res.status(200).json(
+      new ApiResponse(200, "Attendance summary fetched successfully.", { summary })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPredictiveRecovery = async (req, res, next) => {
+  try {
+    const { studentId } = req.params;
+    const { academicSessionId, lateWeight } = req.query;
+
+    if (req.user.role === "student") {
+      const student = await Student.findById(studentId);
+      if (!student || student.userId.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "Access denied. You can only view your own attendance.");
+      }
+    }
+
+    const breakdown = await getStudentFullAttendanceService(
+      studentId,
+      academicSessionId,
+      lateWeight ? parseFloat(lateWeight) : 1.0
+    );
+
+    const predictions = (breakdown.subjectBreakdown || []).map((s) => ({
+      subjectId: s.subjectId,
+      subjectName: s.name,
+      subjectCode: s.code,
+      currentPercentage: s.attendancePercentage ?? 100,
+      totalConducted: s.totalConductedClasses || 0,
+      totalAttended: (s.totalPresent || 0) + (s.totalLate || 0),
+      classesNeededToReach75: s.classesNeededFor75 || 0,
+      isShortage: s.isShortage ?? false,
+    }));
+
+    res.status(200).json(
+      new ApiResponse(200, "Predictive recovery model generated successfully.", { predictions })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyAttendanceSummary = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) throw new ApiError(404, "Student profile not found.");
+    req.params.studentId = student._id.toString();
+    return getStudentAttendanceSummary(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyPredictiveRecovery = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    if (!student) throw new ApiError(404, "Student profile not found.");
+    req.params.studentId = student._id.toString();
+    return getPredictiveRecovery(req, res, next);
   } catch (error) {
     next(error);
   }

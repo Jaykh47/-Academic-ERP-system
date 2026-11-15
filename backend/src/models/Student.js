@@ -111,8 +111,18 @@ const studentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Virtual reference to the User authentication profile
+studentSchema.virtual("user", {
+  ref: "User",
+  localField: "userId",
+  foreignField: "_id",
+  justOne: true,
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INDEXES
