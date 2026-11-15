@@ -224,23 +224,33 @@ export const Navbar = ({ onToggleSidebar }) => {
           )}
         </div>
 
-        {/* User Profile Pill */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-charcoal-border">
-          <div className="w-8 h-8 rounded-full bg-charcoal-elevated border border-charcoal-border flex items-center justify-center text-alice font-bold text-xs uppercase">
-            {user?.name ? user.name.charAt(0) : "U"}
-          </div>
-          <div className="hidden md:block text-left">
-            <div className="text-xs font-bold text-alice leading-tight truncate max-w-[120px]">
-              {user?.name || "User"}
+        {/* User Profile Pill & Logout */}
+        <div className="flex items-center gap-2 pl-2 border-l border-charcoal-border">
+          <Link
+            to="/profile"
+            className="flex items-center gap-2.5 hover:opacity-90 transition-opacity group"
+            title="View My Profile"
+          >
+            <div className="w-8 h-8 rounded-full bg-charcoal-elevated border border-charcoal-border group-hover:border-downy/60 transition-colors flex items-center justify-center text-alice font-bold text-xs uppercase overflow-hidden shrink-0">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user?.name || "User"} className="w-full h-full object-cover" />
+              ) : (
+                user?.name ? user.name.charAt(0).toUpperCase() : "U"
+              )}
             </div>
-            <div className="text-[10px] text-alice-muted uppercase tracking-wider">
-              {role}
+            <div className="hidden md:block text-left">
+              <div className="text-xs font-bold text-alice leading-tight truncate max-w-[120px] group-hover:text-downy transition-colors">
+                {user?.name || "User"}
+              </div>
+              <div className="text-[10px] text-alice-muted uppercase tracking-wider">
+                {role}
+              </div>
             </div>
-          </div>
+          </Link>
 
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-alice-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1"
+            className="p-1.5 rounded-lg text-alice-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1 cursor-pointer"
             title="Sign out"
           >
             <LogOut className="w-4 h-4" />

@@ -27,6 +27,9 @@ import { UserManagementPage } from "./pages/admin/UserManagementPage";
 import { AcademicSetupPage } from "./pages/admin/AcademicSetupPage";
 import { SystemRiskPage } from "./pages/admin/SystemRiskPage";
 
+// Profile Page
+import { ProfilePage } from "./pages/profile/ProfilePage";
+
 // Root Redirect component based on logged-in role
 const RootRedirect = () => {
   const { isAuthenticated, role, loading } = useAuth();
@@ -51,6 +54,7 @@ export default function App() {
             <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
               <Route element={<AppLayout />}>
                 <Route path="/student" element={<StudentDashboard />} />
+                <Route path="/student/profile" element={<ProfilePage />} />
                 <Route path="/student/enrollment" element={<StudentEnrollmentPage />} />
                 <Route path="/student/attendance" element={<StudentAttendance />} />
                 <Route path="/student/performance" element={<StudentPerformance />} />
@@ -62,6 +66,7 @@ export default function App() {
             <Route element={<ProtectedRoute allowedRoles={["faculty", "hod", "admin"]} />}>
               <Route element={<AppLayout />}>
                 <Route path="/faculty" element={<FacultyDashboard />} />
+                <Route path="/faculty/profile" element={<ProfilePage />} />
                 <Route path="/faculty/attendance" element={<ClassAttendancePage />} />
                 <Route path="/faculty/marks" element={<MarksEntryPage />} />
                 <Route path="/faculty/analytics" element={<DepartmentAnalyticsPage />} />
@@ -72,9 +77,17 @@ export default function App() {
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
               <Route element={<AppLayout />}>
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/profile" element={<ProfilePage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/academic" element={<AcademicSetupPage />} />
                 <Route path="/admin/risk" element={<SystemRiskPage />} />
+              </Route>
+            </Route>
+
+            {/* Universal Profile Route for all Authenticated Users */}
+            <Route element={<ProtectedRoute allowedRoles={["student", "faculty", "hod", "admin"]} />}>
+              <Route element={<AppLayout />}>
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Route>
 

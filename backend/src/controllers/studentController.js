@@ -82,9 +82,12 @@ export const updateMyStudentProfile = async (req, res, next) => {
       return next(new ApiError(404, "Student profile not found."));
     }
 
-    // Students can also update their name on the User document
-    if (req.body.name) {
-      await User.findByIdAndUpdate(req.user._id, { name: req.body.name });
+    // Students can also update their name and avatar on the User document
+    const userUpdates = {};
+    if (req.body.name) userUpdates.name = req.body.name;
+    if (req.body.avatar !== undefined) userUpdates.avatar = req.body.avatar;
+    if (Object.keys(userUpdates).length > 0) {
+      await User.findByIdAndUpdate(req.user._id, userUpdates);
     }
 
     res.status(200).json(

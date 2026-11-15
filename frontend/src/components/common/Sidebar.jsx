@@ -25,6 +25,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       case "student":
         return [
           { to: "/student", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/student/profile", label: "My Profile", icon: User },
           { to: "/student/enrollment", label: "Course Registration", icon: BookOpen },
           { to: "/student/attendance", label: "Attendance & Recovery", icon: CalendarCheck },
           { to: "/student/performance", label: "Grades & SGPA", icon: Award },
@@ -34,6 +35,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       case "hod":
         return [
           { to: "/faculty", label: "Overview", icon: LayoutDashboard },
+          { to: "/faculty/profile", label: "My Profile", icon: User },
           { to: "/faculty/attendance", label: "Class Attendance", icon: CheckSquare },
           { to: "/faculty/marks", label: "Exam Marks Entry", icon: Award },
           { to: "/faculty/analytics", label: "Department Analytics", icon: BarChart3 },
@@ -41,6 +43,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       case "admin":
         return [
           { to: "/admin", label: "System Overview", icon: LayoutDashboard },
+          { to: "/admin/profile", label: "My Profile", icon: User },
           { to: "/admin/users", label: "User Directory", icon: Users },
           { to: "/admin/academic", label: "Academic Setup", icon: BookOpen },
           { to: "/admin/risk", label: "Risk Detection Engine", icon: AlertTriangle },
@@ -70,20 +73,32 @@ export const Sidebar = ({ isOpen, onClose }) => {
       >
         <div className="p-4 space-y-6">
           {/* User Role Card */}
-          <div className="p-3.5 rounded-2xl bg-charcoal-elevated/70 border border-charcoal-border/80 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-downy/10 border border-downy/30 flex items-center justify-center text-downy shrink-0">
-              {role === "admin" && <Shield className="w-5 h-5" />}
-              {role === "faculty" && <Sparkles className="w-5 h-5" />}
-              {role === "hod" && <Sparkles className="w-5 h-5" />}
-              {role === "student" && <GraduationCap className="w-5 h-5" />}
+          <NavLink
+            to="/profile"
+            className="p-3.5 rounded-2xl bg-charcoal-elevated/70 border border-charcoal-border/80 flex items-center gap-3 hover:border-downy/40 transition-colors group"
+            title="View Profile"
+          >
+            <div className="w-9 h-9 rounded-xl bg-downy/10 border border-downy/30 flex items-center justify-center text-downy shrink-0 overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user?.name || "User"} className="w-full h-full object-cover" />
+              ) : (
+                <>
+                  {role === "admin" && <Shield className="w-5 h-5" />}
+                  {role === "faculty" && <Sparkles className="w-5 h-5" />}
+                  {role === "hod" && <Sparkles className="w-5 h-5" />}
+                  {role === "student" && <GraduationCap className="w-5 h-5" />}
+                </>
+              )}
             </div>
             <div className="overflow-hidden">
-              <div className="text-xs font-bold text-alice truncate">{user?.name}</div>
+              <div className="text-xs font-bold text-alice truncate group-hover:text-downy transition-colors">
+                {user?.name}
+              </div>
               <div className="text-[11px] uppercase tracking-wider text-downy font-semibold">
                 {role} portal
               </div>
             </div>
-          </div>
+          </NavLink>
 
           {/* Navigation Links */}
           <nav className="space-y-1">

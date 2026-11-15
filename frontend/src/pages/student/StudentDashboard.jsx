@@ -95,21 +95,40 @@ export const StudentDashboard = () => {
       <div className="relative overflow-hidden rounded-3xl bg-charcoal-card border border-charcoal-border p-6 md:p-8 shadow-xl">
         <div className="absolute top-0 right-0 w-80 h-80 bg-downy/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-charcoal-elevated border border-charcoal-border text-xs text-alice-muted">
-              <span>Roll No:</span>
-              <span className="font-mono text-downy font-semibold">
-                {profile?.rollNumber || "BCA-2026-042"}
-              </span>
-              <span className="text-alice-dim">•</span>
-              <span>Semester {profile?.currentSemester || 1}</span>
+          <div className="flex items-center gap-4">
+            <Link
+              to="/student/profile"
+              className="relative group shrink-0"
+              title="View & Edit Profile Photo"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-charcoal-elevated border-2 border-downy/40 group-hover:border-downy transition-colors flex items-center justify-center text-alice font-bold text-xl shadow-lg shadow-downy/10">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user?.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-downy">{user?.name ? user.name.charAt(0).toUpperCase() : "S"}</span>
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 p-1 rounded-lg bg-downy text-charcoal shadow-sm">
+                <User className="w-3 h-3" />
+              </div>
+            </Link>
+
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-charcoal-elevated border border-charcoal-border text-xs text-alice-muted">
+                <span>Roll No:</span>
+                <span className="font-mono text-downy font-semibold">
+                  {profile?.rollNumber || "BCA001"}
+                </span>
+                <span className="text-alice-dim">•</span>
+                <span>Semester {profile?.currentSemester || 1}</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-alice">
+                Welcome back, <span className="text-downy">{user?.name}</span>
+              </h1>
+              <p className="text-xs md:text-sm text-alice-muted max-w-xl">
+                Monitor your class attendance, CBCS grade points, and predictive recovery forecasts in real time.
+              </p>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-alice">
-              Welcome back, <span className="text-downy">{user?.name}</span>
-            </h1>
-            <p className="text-xs md:text-sm text-alice-muted max-w-xl">
-              Monitor your class attendance, CBCS grade points, and predictive recovery forecasts in real time.
-            </p>
           </div>
 
           {/* Action button */}

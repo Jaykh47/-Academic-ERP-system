@@ -22,6 +22,11 @@ export const authApi = {
     return res.data;
   },
 
+  updateProfile: async (data) => {
+    const res = await axiosClient.patch("/auth/profile", data);
+    return res.data;
+  },
+
   refreshToken: async () => {
     const res = await axiosClient.post("/auth/refresh-token");
     if (res.data?.data?.accessToken) {

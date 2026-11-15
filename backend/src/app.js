@@ -53,11 +53,11 @@ app.use("/api", limiter);
 
 // ── 4. BODY PARSERS ───────────────────────────────────────────────────────────
 // Parse incoming JSON request bodies (e.g. POST/PUT request payloads).
-// Limit: 10kb — prevents excessively large payloads from reaching controllers.
-app.use(express.json({ limit: "10kb" }));
+// Limit: 10mb — allows user profile photos and base64 avatar images.
+app.use(express.json({ limit: "10mb" }));
 
 // Parse URL-encoded bodies (HTML form submissions).
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ── 5. COOKIE PARSER ─────────────────────────────────────────────────────────
 // Parses Cookie header and populates req.cookies.

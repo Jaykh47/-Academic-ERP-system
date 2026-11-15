@@ -33,6 +33,7 @@ const sanitizeUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  avatar: user.avatar || "",
   isActive: user.isActive,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
@@ -376,6 +377,64 @@ export const resetPassword = async (req, res, next) => {
         200,
         "Password has been reset successfully. Please log in with your new password."
       )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/v1/auth/profile
+// Universal profile and avatar update for logged-in users (Student, Faculty, Admin)
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, avatar, phone, address, guardianName, guardianPhone, qualification } = req.body;
+
+    const userUpdates = {};
+    if (name && typeof name === "string") userUpdates.name = name.trim();
+    if (avatar !== undefined) userUpdates.avatar = avatar;
+
+    let user;
+    if (Object.keys(userUpdates).length > 0) {
+      user = await User.findByIdAndUpdate(req.user._id, userUpdates, { new: true, runValidators: true });
+    } else {
+      user = await User.findById(req.user._id);
+    }
+
+    // Role-specific profile updates
+    const normalizePhone = (val) => {
+      if (!val) return "";
+      return String(val).trim().replace(/\s+/g, "");
+    };
+
+    if (user.role === "student") {
+      const studentUpdates = {};
+      if (phone !== undefined) studentUpdates.phone = normalizePhone(phone);
+      if (address !== undefined) studentUpdates.address = String(address).trim();
+      if (guardianName !== undefined) studentUpdates.guardianName = String(guardianName).trim();
+      if (guardianPhone !== undefined) studentUpdates.guardianPhone = normalizePhone(guardianPhone);
+
+      if (Object.keys(studentUpdates).length > 0) {
+        await Student.findOneAndUpdate({ userId: user._id }, studentUpdates, { new: true, runValidators: true });
+      }
+    } else if (user.role === "faculty" || user.role === "hod") {
+      const facultyUpdates = {};
+      if (phone !== undefined) facultyUpdates.phone = normalizePhone(phone);
+      if (qualification !== undefined) facultyUpdates.qualification = String(qualification).trim();
+
+      if (Object.keys(facultyUpdates).length > 0) {
+        await Faculty.findOneAndUpdate({ userId: user._id }, facultyUpdates, { new: true, runValidators: true });
+      }
+    }
+
+    const updatedProfile = await getProfileForUser(user);
+
+    res.status(200).json(
+      new ApiResponse(200, "Profile updated successfully.", {
+        user: sanitizeUser(user),
+        profile: updatedProfile,
+      })
     );
   } catch (error) {
     next(error);

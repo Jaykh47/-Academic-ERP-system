@@ -4,6 +4,7 @@ import {
   logout,
   refreshAccessToken,
   getMe,
+  updateProfile,
   changePassword,
   forgotPassword,
   resetPassword,
@@ -80,6 +81,9 @@ router.patch(
 
 // GET /api/v1/auth/me
 router.get("/me", protect, getMe);
+
+// PATCH /api/v1/auth/profile
+router.patch("/profile", protect, updateProfile);
 
 // POST /api/v1/auth/logout
 router.post("/logout", protect, logout);

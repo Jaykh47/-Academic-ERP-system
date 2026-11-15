@@ -66,6 +66,12 @@ const userSchema = new mongoose.Schema(
       required: [true, "Role is required"],
     },
 
+    // Profile photo / avatar (Base64 data URI or public URL)
+    avatar: {
+      type: String,
+      default: "",
+    },
+
     // Soft delete / account control
     // Instead of deleting a user (which would break references in Attendance,
     // Marks etc.), we deactivate them. isActive: false blocks login.

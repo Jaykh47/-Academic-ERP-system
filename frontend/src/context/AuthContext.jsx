@@ -94,6 +94,17 @@ export const AuthProvider = ({ children }) => {
     return await login(creds.email, creds.password);
   };
 
+  const updateUserProfile = async (data) => {
+    const res = await authApi.updateProfile(data);
+    if (res?.data?.user) {
+      setUser(res.data.user);
+      if (res.data.profile) {
+        setProfile(res.data.profile);
+      }
+    }
+    return res;
+  };
+
   const role = user?.role?.toLowerCase() || null;
   const isAuthenticated = !!user;
 
@@ -109,6 +120,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         demoLogin,
         checkAuth,
+        updateUserProfile,
+        setUser,
+        setProfile,
       }}
     >
       {children}

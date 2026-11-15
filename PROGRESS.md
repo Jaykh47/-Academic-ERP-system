@@ -344,3 +344,30 @@
   - Automated E2E verification test passed: student login returns profile with student `_id` and roll number `BCA001`, attendance summary returns 200 with 3 registered courses, predictive recovery returns 200, academic performance returns 200 with SGPA (9.56) and 4 examination records.
   - Faculty roster verification: enrolled students returned with full names ("Ravi Sharma", "Priya Patel") and roll numbers ("BCA001", "BCA002").
   - Frontend production build (`npm run build`) succeeded with 0 errors in 2.72s.
+
+---
+
+## Phase 10: User Profile & Photo Upload Feature ✅ COMPLETE
+
+- [x] **User Schema & Image Storage**:
+  - Added `avatar` field (`type: String`, default: `""`) to `backend/src/models/User.js` supporting Base64 data URLs and remote image paths.
+  - Increased Express body parser limit in `backend/src/app.js` to `10mb` to support client-side image uploads.
+  - Sanitized user responses in `authController.js` to include `avatar`.
+- [x] **Universal Profile Management Endpoints**:
+  - Implemented `PATCH /api/v1/auth/profile` in `authController.js` and `authRoutes.js` allowing any authenticated user to update their name, avatar, and role-specific details (phone, residential address, guardian information, or faculty academic qualification).
+  - Enhanced `studentController.js` and `facultyController.js` profile endpoints with user avatar synchronization.
+  - Relaxed phone validation regex across `Student.js` and `Faculty.js` to gracefully accept international/standard formats (`+91...`).
+- [x] **Frontend Profile Page (`/profile`, `/student/profile`, `/faculty/profile`, `/admin/profile`)**:
+  - Created `ProfilePage.jsx` styled in the deep charcoal brand theme (`#0D141C`) with Downy (`#37CAB9`) and Melrose (`#C0B5EE`) accents.
+  - **Photo Upload**: Client-side Canvas image compressor (downsamples images to crisp max 500x500 WebP/JPEG data URLs under 80KB) with instant preview, change, and remove controls.
+  - **Student Credentials Card**: Displays College Roll Number, University Enrollment Number, Department, Current Semester, Admission Session, and Guardian Emergency Contact with one-click copy shortcuts.
+  - **Faculty Credentials Card**: Displays Employee ID, Academic Designation, Department, Highest Qualification, and Assigned Course count.
+  - **Account Security Card**: Integrated in-page Password Change form.
+- [x] **Global UI Integration**:
+  - Updated `Navbar.jsx`: User profile pill renders uploaded avatar thumbnail with hover states, directly linking to `/profile`.
+  - Updated `Sidebar.jsx`: Added "My Profile" navigation item with `User` icon for Students, Faculty, and Administrators, plus avatar display in the sidebar user card.
+  - Updated `StudentDashboard.jsx`: Welcome banner displays the student's avatar with quick link to profile.
+  - Updated `AuthContext.jsx`: Added `updateUserProfile` context method for seamless real-time state synchronization without page reloads.
+- [x] **Verification**:
+  - Automated E2E verification test passed: student and faculty profile updates return 200 OK with persistent avatar and contact updates.
+  - Production build (`npm run build`) succeeded with 0 errors in 1.04s.

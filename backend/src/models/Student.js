@@ -78,7 +78,7 @@ const studentSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      match: [/^[0-9]{10}$/, "Phone number must be exactly 10 digits"],
+      match: [/^$|^(\+?[0-9]{1,4}[\s-]?)?[0-9]{10}$/, "Phone number must be a valid 10-digit number"],
     },
 
     guardianName: {
@@ -90,7 +90,7 @@ const studentSchema = new mongoose.Schema(
     guardianPhone: {
       type: String,
       trim: true,
-      match: [/^[0-9]{10}$/, "Guardian phone must be exactly 10 digits"],
+      match: [/^$|^(\+?[0-9]{1,4}[\s-]?)?[0-9]{10}$/, "Guardian phone must be a valid 10-digit number"],
     },
 
     address: {
