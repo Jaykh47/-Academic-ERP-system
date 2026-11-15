@@ -294,3 +294,29 @@
 - [x] **Verification**:
   - `npm run build` compiled 2,555 modules with **0 errors** in 1.41s
   - Local Vite dev server active on `http://localhost:3000/` with proxy to backend API `http://localhost:5000/`
+
+---
+
+## Phase 8: DigiCampus Course Registration & Strict Faculty Isolation
+
+- [x] **Admin Academic Session Registration Window**:
+  - Extended `AcademicSession` model with `isEnrollmentOpen` (Boolean), `enrollmentStartDate` (Date), and `enrollmentEndDate` (Date).
+  - Implemented `PATCH /api/v1/admin/sessions/:sessionId/enrollment-window` to configure registration timelines.
+  - Added "Manage Enrollment Window" modal and real-time status badges in `AcademicSetupPage.jsx`.
+- [x] **DigiCampus Student Course Self-Enrollment**:
+  - Built dedicated `StudentEnrollmentPage.jsx` (`/student/enrollment`) styled with the Lexend design system.
+  - Real-time timeline detection: verifies registration window status and alerts students if enrollment is open or locked.
+  - One-click batch enrollment and individual course select/drop for semester subjects.
+  - Added "Course Registration" navigation item to student sidebar and registration prompt banner on dashboard.
+  - Endpoints: `GET /academic/available-subjects`, `POST /academic/enrollments/self`, `DELETE /academic/enrollments/self/:subjectId`.
+- [x] **Strict Faculty Subject Isolation**:
+  - Implemented `GET /academic/my-assigned-subjects` strictly scoping subjects to assigned faculty instructor (`assignedFaculty: faculty._id` or `faculty.subjects`).
+  - Swapped generic subject listings in `ClassAttendancePage.jsx`, `FacultyDashboard.jsx`, `MarksEntryPage.jsx`, and `DepartmentAnalyticsPage.jsx` to assigned-only subjects.
+- [x] **Attendance Roster Bug Resolution ("Student Not Enrolled")**:
+  - Fixed student ID resolution: mapped populated `item.studentId._id`, `item.studentId.rollNumber`, and `item.studentId.userId.name`.
+  - Resolved 400 validation error in `attendanceService.js` where enrollment document IDs were erroneously sent instead of Student IDs.
+  - Mounted `GET /academic/sessions` to allow faculty and students to fetch calendar sessions without 403 Forbidden.
+- [x] **End-to-End Verification**:
+  - Successfully verified admin timeline setup $\rightarrow$ student self-registration $\rightarrow$ faculty subject isolation $\rightarrow$ class session scheduling $\rightarrow$ attendance marking and locking with 200 OK.
+  - Frontend compiled with 0 errors via `npm run build`.
+  - Pushed to GitHub repository on `main`.
