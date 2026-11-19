@@ -3,30 +3,6 @@ import { authApi } from "../api/authApi";
 
 const AuthContext = createContext(null);
 
-export const DEMO_ACCOUNTS = {
-  admin: {
-    role: "admin",
-    label: "Administrator",
-    email: "admin@college.com",
-    password: "Admin@1234",
-    desc: "Full system control, user provisioning & academic setup",
-  },
-  faculty: {
-    role: "faculty",
-    label: "Faculty / Instructor",
-    email: "meena.joshi@faculty.college.com",
-    password: "Faculty@1234",
-    desc: "Mark attendance, upload exam marks & monitor students",
-  },
-  student: {
-    role: "student",
-    label: "Student (Ravi)",
-    email: "ravi.sharma@student.college.com",
-    password: "Student@1234",
-    desc: "View attendance %, SGPA, report cards & shortage alerts",
-  },
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -88,12 +64,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const demoLogin = async (roleKey) => {
-    const creds = DEMO_ACCOUNTS[roleKey];
-    if (!creds) throw new Error("Invalid demo account selected");
-    return await login(creds.email, creds.password);
-  };
-
   const updateUserProfile = async (data) => {
     const res = await authApi.updateProfile(data);
     if (res?.data?.user) {
@@ -118,7 +88,6 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
-        demoLogin,
         checkAuth,
         updateUserProfile,
         setUser,

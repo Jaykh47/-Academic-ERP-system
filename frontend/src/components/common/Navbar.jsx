@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth, DEMO_ACCOUNTS } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { notificationApi } from "../../api/notificationApi";
 import {
@@ -17,14 +17,13 @@ import {
 import { Badge } from "./Badge";
 
 export const Navbar = ({ onToggleSidebar }) => {
-  const { user, role, logout, demoLogin } = useAuth();
+  const { user, role, logout } = useAuth();
   const { success, error } = useToast();
   const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
-  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -54,20 +53,6 @@ export const Navbar = ({ onToggleSidebar }) => {
       success("All notifications marked as read");
     } catch (err) {
       error("Failed to mark notifications as read");
-    }
-  };
-
-  const handleSwitchDemo = async (roleKey) => {
-    setShowRoleSwitcher(false);
-    try {
-      await demoLogin(roleKey);
-      success(`Switched role to ${DEMO_ACCOUNTS[roleKey].label}`);
-      // Redirect to proper portal
-      if (roleKey === "admin") navigate("/admin");
-      else if (roleKey === "faculty") navigate("/faculty");
-      else navigate("/student");
-    } catch (err) {
-      error(err.response?.data?.message || "Failed to switch role");
     }
   };
 
@@ -108,53 +93,15 @@ export const Navbar = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Right: Role Switcher, Notifications, User info, Logout */}
+      {/* Right: Role indicator, Notifications, User info, Logout */}
       <div className="flex items-center gap-2.5 md:gap-4">
-        {/* Quick Demo Switcher Pill */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-charcoal-border bg-charcoal-elevated text-xs font-medium text-alice hover:border-downy/40 transition-all"
-            title="Switch demo account"
-          >
-            <Shield className="w-3.5 h-3.5 text-downy" />
-            <span className="hidden sm:inline">Role:</span>
-            <span className="uppercase text-downy font-semibold">{role || "User"}</span>
-            <ChevronDown className="w-3 h-3 text-alice-muted" />
-          </button>
-
-          {showRoleSwitcher && (
-            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-charcoal-card border border-charcoal-border shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-2 border-b border-charcoal-border/50 text-xs font-semibold text-alice-muted uppercase tracking-wider">
-                Instant Demo Role Switch
-              </div>
-              <div className="space-y-1 mt-1">
-                {Object.entries(DEMO_ACCOUNTS).map(([key, item]) => (
-                  <button
-                    key={key}
-                    onClick={() => handleSwitchDemo(key)}
-                    className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-2.5 ${
-                      role === item.role
-                        ? "bg-downy/10 border border-downy/30"
-                        : "hover:bg-charcoal-elevated border border-transparent"
-                    }`}
-                  >
-                    <div className="mt-0.5">
-                      {item.role === "admin" && <Shield className="w-4 h-4 text-downy" />}
-                      {item.role === "faculty" && <Briefcase className="w-4 h-4 text-melrose" />}
-                      {item.role === "student" && <GraduationCap className="w-4 h-4 text-[#bfd948]" />}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-alice">{item.label}</div>
-                      <div className="text-[11px] text-alice-muted leading-tight mt-0.5">
-                        {item.desc}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* User Role Badge */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-charcoal-border bg-charcoal-elevated text-xs font-medium text-alice">
+          {role === "admin" && <Shield className="w-3.5 h-3.5 text-downy" />}
+          {(role === "faculty" || role === "hod") && <Briefcase className="w-3.5 h-3.5 text-melrose" />}
+          {role === "student" && <GraduationCap className="w-3.5 h-3.5 text-[#bfd948]" />}
+          <span className="text-alice-muted">Portal:</span>
+          <span className="uppercase text-downy font-bold tracking-wide">{role || "User"}</span>
         </div>
 
         {/* Notifications Popover */}
