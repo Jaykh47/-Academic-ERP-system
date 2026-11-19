@@ -2,6 +2,7 @@ import express from "express";
 import {
   login,
   logout,
+  checkEmail,
   refreshAccessToken,
   getMe,
   updateProfile,
@@ -24,12 +25,6 @@ import { rateLimit } from "express-rate-limit";
  *
  * Rate limiting is applied specifically to sensitive auth endpoints
  * in addition to the global rate limiter in app.js.
- *
- * Why extra rate limiting here?
- * The global limiter allows 100 requests/15 min per IP.
- * Brute-force attacks on /login could use up those 100 attempts quickly.
- * This stricter limiter allows only 10 login attempts per 15 minutes,
- * making brute-force attacks impractical.
  */
 
 const router = express.Router();
@@ -37,7 +32,7 @@ const router = express.Router();
 // Strict rate limiter for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,                  // 10 attempts per window
+  max: 30,                  // 30 attempts per window
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -51,6 +46,9 @@ const authLimiter = rateLimit({
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC ROUTES (no authentication required)
 // ─────────────────────────────────────────────────────────────────────────────
+
+// POST /api/v1/auth/check-email (Authenticate whether an email exists in the system)
+router.post("/check-email", checkEmail);
 
 // POST /api/v1/auth/login
 router.post("/login", authLimiter, loginValidation, validate, login);

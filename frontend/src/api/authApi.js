@@ -1,6 +1,11 @@
 import axiosClient, { setAccessToken } from "./axiosClient";
 
 export const authApi = {
+  checkEmail: async (email) => {
+    const res = await axiosClient.post("/auth/check-email", { email });
+    return res.data;
+  },
+
   login: async (credentials) => {
     const res = await axiosClient.post("/auth/login", credentials);
     if (res.data?.data?.accessToken) {

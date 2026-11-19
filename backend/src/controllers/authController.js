@@ -55,25 +55,90 @@ const getProfileForUser = async (user) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/auth/check-email
+// Verifies whether an email address exists in the system
+// ─────────────────────────────────────────────────────────────────────────────
+export const checkEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== "string") {
+      throw new ApiError(400, "Email address is required.");
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Syntax validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      throw new ApiError(422, "Please enter a valid email address format.");
+    }
+
+    const user = await User.findOne({ email: trimmedEmail }).select(
+      "name role isActive avatar"
+    );
+
+    if (!user) {
+      return res.status(200).json(
+        new ApiResponse(200, "Email check completed.", {
+          exists: false,
+          email: trimmedEmail,
+          message: "No account found with this email address.",
+        })
+      );
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, "Account found.", {
+        exists: true,
+        email: trimmedEmail,
+        name: user.name,
+        role: user.role,
+        isActive: user.isActive,
+        avatar: user.avatar || "",
+        message: `Account verified for ${user.name} (${user.role.toUpperCase()}).`,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/auth/login
 // ─────────────────────────────────────────────────────────────────────────────
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = (email || "").trim().toLowerCase();
 
     // Find the user, explicitly selecting password (it's select:false by default)
-    const user = await User.findOne({ email }).select(
+    const user = await User.findOne({ email: normalizedEmail }).select(
       "+password +refreshToken"
     );
 
-    // SECURITY: Use the same error message for "user not found" and
-    // "wrong password" to prevent user enumeration attacks.
-    // (An attacker should not be able to tell if an email exists in the system.)
-    if (!user || !(await user.comparePassword(password))) {
-      return next(new ApiError(401, "Invalid email or password."));
+    // 1. Authenticate whether the email address exists in the database
+    if (!user) {
+      return next(
+        new ApiError(
+          404,
+          "No account found with this email address. Please check your email or contact the administrator."
+        )
+      );
     }
 
-    // Check account is active
+    // 2. Authenticate whether the password matches
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+      return next(
+        new ApiError(
+          401,
+          "Incorrect password. Please verify your credentials and try again."
+        )
+      );
+    }
+
+    // 3. Check account is active
     if (!user.isActive) {
       return next(
         new ApiError(

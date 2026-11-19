@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { authApi } from "../../api/authApi";
 import {
   Lock,
   Mail,
@@ -11,6 +12,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ShieldCheck,
+  UserCheck,
+  UserX,
+  Loader2,
 } from "lucide-react";
 
 export const LoginPage = () => {
@@ -23,6 +27,11 @@ export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Email verification state
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [accountInfo, setAccountInfo] = useState(null); // { exists: bool, name, role, message }
+  const debounceTimerRef = useRef(null);
+
   // Field-level validation error states
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -32,7 +41,7 @@ export const LoginPage = () => {
   // Standard email regular expression
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-  const validateEmail = (val) => {
+  const validateEmailSyntax = (val) => {
     const trimmed = (val ?? "").trim();
     if (!trimmed) {
       return "Email address is required.";
@@ -53,18 +62,72 @@ export const LoginPage = () => {
     return "";
   };
 
+  // Perform async email check with the backend
+  const verifyEmailWithServer = async (emailToVerify) => {
+    const trimmed = (emailToVerify || "").trim().toLowerCase();
+    if (!emailRegex.test(trimmed)) {
+      setAccountInfo(null);
+      return;
+    }
+
+    try {
+      setCheckingEmail(true);
+      const res = await authApi.checkEmail(trimmed);
+      const data = res?.data;
+      if (data?.exists) {
+        setAccountInfo({
+          exists: true,
+          name: data.name,
+          role: data.role,
+          message: `Account verified: ${data.name} (${data.role.toUpperCase()})`,
+        });
+        setEmailError("");
+      } else {
+        setAccountInfo({
+          exists: false,
+          message: "No account found with this email address.",
+        });
+        setEmailError("This email address is not registered in the system.");
+      }
+    } catch {
+      // Network or API failure: don't aggressively block user, let submit handle it
+      setAccountInfo(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleEmailChange = (e) => {
     const val = e.target.value;
     setEmail(val);
     setFormError("");
+    setAccountInfo(null);
+
+    const syntaxErr = validateEmailSyntax(val);
     if (emailTouched) {
-      setEmailError(validateEmail(val));
+      setEmailError(syntaxErr);
+    }
+
+    // Debounce verification check while typing if valid syntax
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (!syntaxErr && val.trim().length > 5) {
+      debounceTimerRef.current = setTimeout(() => {
+        verifyEmailWithServer(val);
+      }, 600);
     }
   };
 
   const handleEmailBlur = () => {
     setEmailTouched(true);
-    setEmailError(validateEmail(email));
+    const syntaxErr = validateEmailSyntax(email);
+    setEmailError(syntaxErr);
+
+    if (!syntaxErr && email.trim()) {
+      verifyEmailWithServer(email);
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -80,7 +143,7 @@ export const LoginPage = () => {
     e.preventDefault();
     setEmailTouched(true);
 
-    const emailErr = validateEmail(email);
+    const emailErr = validateEmailSyntax(email);
     const passErr = validatePassword(password);
 
     setEmailError(emailErr);
@@ -88,6 +151,12 @@ export const LoginPage = () => {
     setFormError("");
 
     if (emailErr || passErr) {
+      return;
+    }
+
+    // If pre-check explicitly confirmed account does not exist
+    if (accountInfo && accountInfo.exists === false) {
+      setEmailError("No account found with this email address. Please verify your email.");
       return;
     }
 
@@ -102,11 +171,30 @@ export const LoginPage = () => {
       else if (userRole === "faculty" || userRole === "hod") navigate("/faculty");
       else navigate("/student");
     } catch (err) {
+      const status = err.response?.status;
       const serverMsg =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0]?.message ||
-        "Invalid email or password. Please verify your credentials.";
-      setFormError(serverMsg);
+        "Authentication failed. Please verify your credentials.";
+
+      if (status === 404) {
+        // Email does not exist
+        setEmailError("No account found with this email address. Please check your email.");
+        setAccountInfo({
+          exists: false,
+          message: "No account found with this email address.",
+        });
+        setFormError(serverMsg);
+      } else if (status === 401) {
+        // Password incorrect
+        setPasswordError("Incorrect password. Please verify your password and try again.");
+        setFormError("Incorrect password. Please verify your credentials.");
+      } else if (status === 403) {
+        // Account deactivated
+        setFormError(serverMsg);
+      } else {
+        setFormError(serverMsg);
+      }
       error(serverMsg);
     } finally {
       setLoading(false);
@@ -140,9 +228,9 @@ export const LoginPage = () => {
         <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 sm:p-8 shadow-2xl space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-charcoal-border/70">
             <div>
-              <h2 className="text-base font-bold text-alice">Account Login</h2>
+              <h2 className="text-base font-bold text-alice">Account Authentication</h2>
               <p className="text-xs text-alice-muted mt-0.5">
-                Enter your institutional email and password
+                Verify email and enter password to access portal
               </p>
             </div>
             <div className="p-2 rounded-xl bg-downy/10 border border-downy/20 text-downy">
@@ -152,7 +240,7 @@ export const LoginPage = () => {
 
           {/* Form-level error alert */}
           {formError && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs">
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
               <span>{formError}</span>
             </div>
@@ -161,9 +249,18 @@ export const LoginPage = () => {
           <form onSubmit={handleManualLogin} noValidate className="space-y-4">
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-alice-muted uppercase tracking-wider">
-                Email Address
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-alice-muted uppercase tracking-wider">
+                  Email Address
+                </label>
+                {checkingEmail && (
+                  <span className="text-[11px] text-downy flex items-center gap-1 font-medium">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Authenticating email...
+                  </span>
+                )}
+              </div>
+
               <div className="relative">
                 <Mail className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -177,21 +274,45 @@ export const LoginPage = () => {
                   spellCheck="false"
                   disabled={loading}
                   className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-charcoal-elevated border text-alice text-sm outline-none transition-all placeholder:text-alice-dim/60 ${
-                    emailError
+                    emailError || (accountInfo && !accountInfo.exists)
                       ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      : accountInfo?.exists
+                      ? "border-downy focus:border-downy focus:ring-1 focus:ring-downy shadow-sm shadow-downy/10"
                       : isEmailValid
                       ? "border-downy/50 focus:border-downy focus:ring-1 focus:ring-downy"
                       : "border-charcoal-border focus:border-downy focus:ring-1 focus:ring-downy"
                   }`}
                 />
-                {isEmailValid && !emailError && (
-                  <CheckCircle2 className="w-4 h-4 text-downy absolute right-3.5 top-1/2 -translate-y-1/2" />
-                )}
+
+                {/* Right Input Status Indicator */}
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
+                  {checkingEmail ? (
+                    <Loader2 className="w-4 h-4 text-downy animate-spin" />
+                  ) : accountInfo?.exists ? (
+                    <CheckCircle2 className="w-4 h-4 text-downy" title="Account recognized" />
+                  ) : accountInfo && !accountInfo.exists ? (
+                    <UserX className="w-4 h-4 text-rose-400" title="Account not found" />
+                  ) : isEmailValid && !emailError ? (
+                    <CheckCircle2 className="w-4 h-4 text-downy/60" />
+                  ) : null}
+                </div>
               </div>
-              {emailError && (
-                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1 mt-1">
+
+              {/* Verified Account Banner */}
+              {accountInfo?.exists && !emailError && (
+                <div className="p-2.5 rounded-xl bg-downy/10 border border-downy/30 flex items-center gap-2 text-downy text-xs font-semibold animate-in fade-in duration-200">
+                  <UserCheck className="w-4 h-4 shrink-0" />
+                  <span>
+                    Account verified: <strong>{accountInfo.name}</strong> ({accountInfo.role.toUpperCase()})
+                  </span>
+                </div>
+              )}
+
+              {/* Email Not Found Banner */}
+              {((accountInfo && !accountInfo.exists) || emailError) && (
+                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1.5 mt-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{emailError}</span>
+                  <span>{emailError || accountInfo?.message}</span>
                 </p>
               )}
             </div>
@@ -228,7 +349,7 @@ export const LoginPage = () => {
                 </button>
               </div>
               {passwordError && (
-                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1 mt-1">
+                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1 mt-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{passwordError}</span>
                 </p>
@@ -238,7 +359,7 @@ export const LoginPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || checkingEmail}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-downy text-charcoal font-bold text-sm tracking-wide hover:bg-downy-hover shadow-lg shadow-downy/20 hover:shadow-downy/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2"
             >
               {loading ? (
