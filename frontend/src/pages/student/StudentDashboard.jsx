@@ -127,7 +127,7 @@ export const StudentDashboard = () => {
                 Welcome back, <span className="text-downy">{user?.name}</span>
               </h1>
               <p className="text-xs md:text-sm text-alice-muted max-w-xl">
-                Monitor your class attendance, CBCS grade points, and predictive recovery forecasts in real time.
+                Monitor your class attendance, CBCS grade points, and academic performance in real time.
               </p>
             </div>
           </div>
@@ -153,15 +153,14 @@ export const StudentDashboard = () => {
               Attendance Shortage Warning ({overallAtt}%)
             </h4>
             <p className="text-xs text-alice-muted">
-              Your overall attendance is below the mandatory 75% institutional threshold. Visit the
-              predictive recovery section to calculate required attendance to restore eligibility.
+              Your overall attendance is below the mandatory 75% institutional threshold. Please attend upcoming classes to maintain examination eligibility.
             </p>
           </div>
           <Link
             to="/student/attendance"
             className="text-xs font-bold text-jonquil underline hover:text-amber-300 self-center shrink-0"
           >
-            Calculate Recovery &rarr;
+            View Attendance &rarr;
           </Link>
         </div>
       )}
@@ -223,7 +222,7 @@ export const StudentDashboard = () => {
 
         <StatCard
           title="Academic Standing"
-          value={overallAtt >= 75 ? "GOOD" : "AT RISK"}
+          value={overallAtt >= 75 ? "GOOD" : "SHORTAGE"}
           subvalue="Eligibility status"
           icon={TrendingUp}
           accent={overallAtt >= 75 ? "downy" : "rose"}

@@ -83,7 +83,7 @@ export const LoginPage = () => {
             Academia<span className="text-downy">Tracker</span>
           </h1>
           <p className="text-xs text-alice-muted max-w-xs mx-auto">
-            Real-time attendance intelligence, CBCS grading engine & risk detection.
+            Real-time attendance intelligence & CBCS grading engine.
           </p>
         </div>
 

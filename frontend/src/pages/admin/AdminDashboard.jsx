@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../../api/adminApi";
-import { analyticsApi } from "../../api/analyticsApi";
 import { useAuth } from "../../context/AuthContext";
 import { StatCard } from "../../components/common/StatCard";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
@@ -12,7 +11,6 @@ import {
   Briefcase,
   BookOpen,
   Calendar,
-  AlertTriangle,
   UserPlus,
   Shield,
   ArrowRight,
@@ -27,17 +25,15 @@ export const AdminDashboard = () => {
   const [deptsCount, setDeptsCount] = useState(0);
   const [sessions, setSessions] = useState([]);
   const [recentUsers, setRecentUsers] = useState([]);
-  const [riskCount, setRiskCount] = useState(0);
 
   useEffect(() => {
     const fetchAdminStats = async () => {
       try {
         setLoading(true);
-        const [usersRes, deptsRes, sessRes, riskRes] = await Promise.allSettled([
+        const [usersRes, deptsRes, sessRes] = await Promise.allSettled([
           adminApi.getUsers({ limit: 6 }),
           adminApi.getDepartments(),
           adminApi.getSessions(),
-          analyticsApi.getAcademicRiskReport(),
         ]);
 
         if (usersRes.status === "fulfilled") {
@@ -59,11 +55,6 @@ export const AdminDashboard = () => {
         if (sessRes.status === "fulfilled") {
           const sessList = sessRes.value?.data?.sessions || [];
           setSessions(sessList);
-        }
-
-        if (riskRes.status === "fulfilled") {
-          const risks = riskRes.value?.data?.atRiskStudents || [];
-          setRiskCount(risks.length);
         }
       } catch (err) {
         // Tolerant
@@ -102,7 +93,7 @@ export const AdminDashboard = () => {
               College System <span className="text-downy">Overview</span>
             </h1>
             <p className="text-xs md:text-sm text-alice-muted max-w-xl">
-              User provisioning, multi-department academic structures, session management, and institution-wide risk audits.
+              User provisioning, multi-department academic structures, and session management.
             </p>
           </div>
 
@@ -158,13 +149,13 @@ export const AdminDashboard = () => {
         />
 
         <StatCard
-          title="At-Risk Alerts"
-          value={riskCount}
-          subvalue="Attendance & marks"
-          icon={AlertTriangle}
-          accent={riskCount > 0 ? "rose" : "downy"}
-          trend={riskCount > 0 ? "Intervention required" : "Healthy standing"}
-          trendType={riskCount > 0 ? "down" : "up"}
+          title="Academic Sessions"
+          value={sessions.length || 1}
+          subvalue={currentSession?.name || "Current Academic Term"}
+          icon={Calendar}
+          accent="jonquil"
+          trend={currentSession ? "Session active" : "Term configured"}
+          trendType="neutral"
         />
       </div>
 

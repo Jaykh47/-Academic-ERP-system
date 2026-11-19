@@ -9,9 +9,6 @@ import {
   User,
   Users,
   BookOpen,
-  AlertTriangle,
-  BarChart3,
-  FileSpreadsheet,
   CheckSquare,
   Shield,
   GraduationCap,
@@ -28,7 +25,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           { to: "/student", label: "Dashboard", icon: LayoutDashboard },
           { to: "/student/profile", label: "My Profile", icon: User },
           { to: "/student/enrollment", label: "Course Registration", icon: BookOpen },
-          { to: "/student/attendance", label: "Attendance & Recovery", icon: CalendarCheck },
+          { to: "/student/attendance", label: "Attendance Records", icon: CalendarCheck },
           { to: "/student/performance", label: "Grades & SGPA", icon: Award },
           { to: "/student/notifications", label: "Notifications", icon: Bell },
         ];
@@ -39,7 +36,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
           { to: "/faculty/profile", label: "My Profile", icon: User },
           { to: "/faculty/attendance", label: "Class Attendance", icon: CheckSquare },
           { to: "/faculty/marks", label: "Exam Marks Entry", icon: Award },
-          { to: "/faculty/analytics", label: "Department Analytics", icon: BarChart3 },
         ];
       case "admin":
         return [
@@ -47,7 +43,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
           { to: "/admin/profile", label: "My Profile", icon: User },
           { to: "/admin/users", label: "User Directory", icon: Users },
           { to: "/admin/academic", label: "Academic Setup", icon: BookOpen },
-          { to: "/admin/risk", label: "Risk Detection Engine", icon: AlertTriangle },
         ];
       default:
         return [];
@@ -138,7 +133,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <span className="text-downy font-bold">UGC</span>
             </div>
             <p className="text-[10px] text-alice-dim leading-relaxed">
-              Calculates real-time SGPA & predictive class recovery.
+              Calculates real-time SGPA & CBCS academic standing.
             </p>
           </div>
         </div>

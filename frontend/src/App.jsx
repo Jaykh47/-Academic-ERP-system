@@ -19,13 +19,11 @@ import { StudentEnrollmentPage } from "./pages/student/StudentEnrollmentPage";
 import { FacultyDashboard } from "./pages/faculty/FacultyDashboard";
 import { ClassAttendancePage } from "./pages/faculty/ClassAttendancePage";
 import { MarksEntryPage } from "./pages/faculty/MarksEntryPage";
-import { DepartmentAnalyticsPage } from "./pages/faculty/DepartmentAnalyticsPage";
 
 // Admin Pages
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { UserManagementPage } from "./pages/admin/UserManagementPage";
 import { AcademicSetupPage } from "./pages/admin/AcademicSetupPage";
-import { SystemRiskPage } from "./pages/admin/SystemRiskPage";
 
 // Profile Page
 import { ProfilePage } from "./pages/profile/ProfilePage";
@@ -69,7 +67,7 @@ export default function App() {
                 <Route path="/faculty/profile" element={<ProfilePage />} />
                 <Route path="/faculty/attendance" element={<ClassAttendancePage />} />
                 <Route path="/faculty/marks" element={<MarksEntryPage />} />
-                <Route path="/faculty/analytics" element={<DepartmentAnalyticsPage />} />
+                <Route path="/faculty/analytics" element={<Navigate to="/faculty" replace />} />
               </Route>
             </Route>
 
@@ -80,7 +78,7 @@ export default function App() {
                 <Route path="/admin/profile" element={<ProfilePage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/academic" element={<AcademicSetupPage />} />
-                <Route path="/admin/risk" element={<SystemRiskPage />} />
+                <Route path="/admin/risk" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>
 
