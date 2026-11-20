@@ -3,6 +3,7 @@ import {
   createExamination,
   getExaminations,
   getExaminationById,
+  lockExamination,
   submitMarks,
   updateSingleMarks,
   getExaminationResults,
@@ -50,6 +51,12 @@ router.get(
   "/examinations/:examId/results",
   authorize("admin", "hod", "faculty"),
   getExaminationResults
+);
+
+router.patch(
+  "/examinations/:examId/lock",
+  authorize("admin", "hod", "faculty"),
+  lockExamination
 );
 
 // ── MARKS UPLOAD & AUDIT ─────────────────────────────────────────────────────

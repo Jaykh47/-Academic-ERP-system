@@ -118,6 +118,23 @@ const examinationSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, "Description must not exceed 500 characters"],
     },
+
+    // Marks freezing & audit lock
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+
+    lockedAt: {
+      type: Date,
+      default: null,
+    },
+
+    lockedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Faculty",
+      default: null,
+    },
   },
   {
     timestamps: true,

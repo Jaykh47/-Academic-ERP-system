@@ -31,6 +31,13 @@ import { getStudentSemesterReportService } from "./marksService.js";
 export const generateStudentReportCardPDF = async (studentId, semester, academicSessionId) => {
   const reportData = await getStudentSemesterReportService(studentId, semester, academicSessionId);
 
+  if (!reportData.academicSummary.isComplete) {
+    throw new ApiError(
+      400,
+      `Official semester report card cannot be downloaded until all enrolled subjects are evaluated. (${reportData.academicSummary.pendingSubjectsCount} subject(s) are awaiting marks evaluation)`
+    );
+  }
+
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: "A4" });
@@ -93,13 +100,15 @@ export const generateStudentReportCardPDF = async (studentId, semester, academic
         doc.text(sub.code, 45, currentY + 5, { width: 60 });
         doc.text(sub.name, 110, currentY + 5, { width: 175 });
         doc.text(String(sub.credits), 290, currentY + 5, { width: 50, align: "center" });
-        doc.text(`${sub.totalObtainedMarks}/${sub.totalMaxMarks}`, 345, currentY + 5, { width: 65, align: "center" });
-        doc.text(sub.grade, 415, currentY + 5, { width: 45, align: "center" });
-        doc.text(String(sub.gradePoint), 465, currentY + 5, { width: 40, align: "center" });
+        const scoreText = sub.isEvaluated ? `${sub.totalObtainedMarks}/${sub.totalMaxMarks}` : "-- / --";
+        doc.text(scoreText, 345, currentY + 5, { width: 65, align: "center" });
+        doc.text(sub.grade || "PENDING", 415, currentY + 5, { width: 45, align: "center" });
+        doc.text(sub.gradePoint !== null && sub.gradePoint !== undefined ? String(sub.gradePoint) : "--", 465, currentY + 5, { width: 40, align: "center" });
 
-        const statusColor = sub.isPassed ? "#2E7D32" : "#C62828";
+        const statusLabel = sub.isEvaluated ? (sub.isPassed ? "PASS" : "FAIL") : "PENDING";
+        const statusColor = !sub.isEvaluated ? "#D97706" : (sub.isPassed ? "#2E7D32" : "#C62828");
         doc.fillColor(statusColor).font("Helvetica-Bold");
-        doc.text(sub.isPassed ? "PASS" : "FAIL", 510, currentY + 5, { width: 40, align: "center" });
+        doc.text(statusLabel, 510, currentY + 5, { width: 40, align: "center" });
 
         doc.font("Helvetica").fillColor("#222222");
         currentY += 20;

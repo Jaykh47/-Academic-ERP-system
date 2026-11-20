@@ -16,6 +16,10 @@ import {
   AlertCircle,
   HelpCircle,
   Sparkles,
+  Lock,
+  Unlock,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 
 export const MarksEntryPage = () => {
@@ -32,6 +36,7 @@ export const MarksEntryPage = () => {
   const [students, setStudents] = useState([]);
   const [marksMap, setMarksMap] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [locking, setLocking] = useState(false);
 
   // Modal for scheduling exam
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -132,6 +137,9 @@ export const MarksEntryPage = () => {
     const fetchExistingMarks = async () => {
       try {
         const res = await marksApi.getExaminationResultSheet(selectedExam._id);
+        if (res?.data?.examination) {
+          setSelectedExam((prev) => ({ ...prev, ...res.data.examination }));
+        }
         const results = res?.data?.results || [];
         if (results.length > 0) {
           const loadedMap = {};
@@ -236,6 +244,38 @@ export const MarksEntryPage = () => {
     }));
   };
 
+  const handleLockMarks = async () => {
+    if (!selectedExam?._id) {
+      warning("Please select an examination first.");
+      return;
+    }
+
+    try {
+      setLocking(true);
+      const res = await marksApi.lockExamination(selectedExam._id);
+      success(res.message || "Marks locked! You can still edit scores within the 2-day (48-hour) grace window.");
+      
+      const updatedExam = {
+        ...selectedExam,
+        isLocked: true,
+        lockedAt: res.data?.lockedAt || new Date().toISOString(),
+        lockExpiresAt: res.data?.lockExpiresAt,
+        isPermanentlyLocked: false,
+        remainingHours: res.data?.remainingHours ?? 48,
+        canEdit: true,
+      };
+
+      setSelectedExam(updatedExam);
+      setExaminations((prev) =>
+        prev.map((x) => (x._id === selectedExam._id ? updatedExam : x))
+      );
+    } catch (err) {
+      error(formatApiError(err, "Failed to lock examination marks"));
+    } finally {
+      setLocking(false);
+    }
+  };
+
   const handleSubmitMarks = async () => {
     if (!selectedExam) {
       warning("Please select or schedule an examination first.");
@@ -257,9 +297,13 @@ export const MarksEntryPage = () => {
 
     try {
       setSubmitting(true);
-      await marksApi.submitMarks(selectedExam._id, marks);
+      const res = await marksApi.submitMarks(selectedExam._id, marks);
 
-      success(`Successfully published grades for ${marks.length} students!`);
+      if (res?.warning) {
+        warning(res.warning);
+      } else {
+        success(`Successfully saved marks for ${marks.length} students!`);
+      }
     } catch (err) {
       error(formatApiError(err, "Failed to upload marks"));
     } finally {
@@ -272,6 +316,14 @@ export const MarksEntryPage = () => {
   }
 
   const currentMax = selectedExam?.maximumMarks || 100;
+  const isLocked = Boolean(selectedExam?.isLocked);
+  const lockedTime = selectedExam?.lockedAt ? new Date(selectedExam.lockedAt).getTime() : null;
+  const GRACE_PERIOD_MS = 2 * 24 * 60 * 60 * 1000;
+  const elapsedMs = lockedTime ? Date.now() - lockedTime : 0;
+  const isPermanentlyLocked = isLocked && (selectedExam?.isPermanentlyLocked || elapsedMs > GRACE_PERIOD_MS);
+  const remainingHours = isLocked && !isPermanentlyLocked
+    ? Math.max(1, Math.ceil((GRACE_PERIOD_MS - elapsedMs) / (1000 * 60 * 60)))
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -341,8 +393,8 @@ export const MarksEntryPage = () => {
 
       {/* Exam Specs Card */}
       {selectedExam && (
-        <div className="p-4 rounded-2xl bg-charcoal-card border border-charcoal-border flex items-center justify-between text-xs text-alice-muted">
-          <div className="flex items-center gap-4">
+        <div className="p-4 rounded-2xl bg-charcoal-card border border-charcoal-border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-alice-muted">
+          <div className="flex flex-wrap items-center gap-4">
             <div>
               <span className="text-alice-dim uppercase">Assessment:</span>{" "}
               <strong className="text-alice">{selectedExam.name}</strong>
@@ -360,13 +412,50 @@ export const MarksEntryPage = () => {
               <strong className="text-melrose">{selectedExam.weightage}%</strong>
             </div>
           </div>
-          <Badge variant="melrose">CBCS Indexed</Badge>
+          <div className="flex items-center gap-2">
+            {isPermanentlyLocked ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 font-bold text-xs">
+                <Lock className="w-3.5 h-3.5" /> Permanently Locked
+              </span>
+            ) : isLocked ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold text-xs">
+                <Clock className="w-3.5 h-3.5" /> Locked ({remainingHours}h edit grace)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold text-xs">
+                <Unlock className="w-3.5 h-3.5" /> Open / Editable
+              </span>
+            )}
+            <Badge variant="melrose">CBCS Indexed</Badge>
+          </div>
+        </div>
+      )}
+
+      {/* 2-Day Grace Period Active Banner */}
+      {isLocked && !isPermanentlyLocked && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start sm:items-center gap-3">
+          <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+          <div className="text-xs text-amber-200 flex-1">
+            <span className="font-bold uppercase tracking-wider text-amber-300">Marks Locked — 2-Day Grace Window Active: </span>
+            <span>You can still edit and update student scores for the next <strong>{remainingHours} hour(s)</strong>. Once this 48-hour grace window expires, marks will freeze permanently.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Permanently Locked Banner */}
+      {isPermanentlyLocked && (
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-start sm:items-center gap-3">
+          <Lock className="w-5 h-5 text-rose-400 shrink-0 mt-0.5 sm:mt-0" />
+          <div className="text-xs text-rose-200 flex-1">
+            <span className="font-bold uppercase tracking-wider text-rose-300">Examination Marks Permanently Locked: </span>
+            <span>The 2-day edit window for this assessment has expired. Scores cannot be modified. Contact administration for official corrections.</span>
+          </div>
         </div>
       )}
 
       {/* Marks Entry Table */}
       <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-bold text-alice">Student Score Input Sheet</h3>
             <p className="text-xs text-alice-muted">
@@ -374,14 +463,43 @@ export const MarksEntryPage = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleSubmitMarks}
-            disabled={submitting || students.length === 0}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all cursor-pointer disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{submitting ? "Uploading..." : "Save & Publish Grades"}</span>
-          </button>
+          <div className="flex items-center gap-2.5">
+            {!isLocked && (
+              <button
+                type="button"
+                onClick={handleLockMarks}
+                disabled={locking || submitting || students.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40"
+                title="Lock marks to begin the 2-day edit window"
+              >
+                <Lock className="w-4 h-4" />
+                <span>{locking ? "Locking..." : "Lock Marks"}</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleSubmitMarks}
+              disabled={submitting || isPermanentlyLocked || students.length === 0}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer disabled:opacity-40 ${
+                isPermanentlyLocked
+                  ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                  : isLocked
+                  ? "bg-amber-400 hover:bg-amber-300 text-charcoal shadow-amber-400/20"
+                  : "bg-downy text-charcoal hover:bg-downy-hover shadow-downy/20"
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>
+                {submitting
+                  ? "Uploading..."
+                  : isPermanentlyLocked
+                  ? "Locked (Read Only)"
+                  : isLocked
+                  ? "Save Updates (Grace Window)"
+                  : "Save & Publish Grades"}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -441,7 +559,7 @@ export const MarksEntryPage = () => {
                           type="number"
                           min="0"
                           max={currentMax}
-                          disabled={isAbs}
+                          disabled={isAbs || isPermanentlyLocked}
                           value={isAbs ? "" : score}
                           onChange={(e) => handleScoreChange(sId, e.target.value)}
                           placeholder={`0 - ${currentMax}`}
@@ -452,8 +570,9 @@ export const MarksEntryPage = () => {
                         <input
                           type="checkbox"
                           checked={isAbs}
+                          disabled={isPermanentlyLocked}
                           onChange={() => handleAbsentToggle(sId)}
-                          className="w-4 h-4 rounded bg-charcoal accent-rose-500 cursor-pointer"
+                          className="w-4 h-4 rounded bg-charcoal accent-rose-500 cursor-pointer disabled:opacity-30"
                         />
                       </td>
                       <td className="py-3.5 px-4 text-center font-mono">

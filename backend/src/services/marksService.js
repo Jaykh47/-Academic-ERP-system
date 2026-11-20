@@ -117,10 +117,47 @@ export const createExaminationService = async (data, requestingUser) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCKING & AUDIT RULES
+// ─────────────────────────────────────────────────────────────────────────────
+export const GRACE_PERIOD_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours (2 days)
+
+export const verifyExamLockStatus = (exam, requestingUser) => {
+  if (!exam.isLocked) {
+    return { isLocked: false, canEdit: true };
+  }
+
+  // Administrator role override
+  if (requestingUser?.role === "admin") {
+    return { isLocked: true, canEdit: true, isAdminOverride: true };
+  }
+
+  const lockedTime = exam.lockedAt ? new Date(exam.lockedAt).getTime() : Date.now();
+  const elapsedMs = Date.now() - lockedTime;
+  const remainingMs = GRACE_PERIOD_MS - elapsedMs;
+
+  if (remainingMs <= 0) {
+    const expiredDateStr = new Date(lockedTime + GRACE_PERIOD_MS).toLocaleString();
+    throw new ApiError(
+      403,
+      `Marks for this examination are permanently locked. The 2-day edit window expired on ${expiredDateStr}. Contact administration for any official amendments.`
+    );
+  }
+
+  const remainingHours = Math.max(1, Math.ceil(remainingMs / (1000 * 60 * 60)));
+  return {
+    isLocked: true,
+    canEdit: true,
+    remainingHours,
+    lockExpiresAt: new Date(lockedTime + GRACE_PERIOD_MS),
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LIST EXAMINATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 export const getExaminationsService = async (filter) => {
-  return await Examination.find(filter)
+  const exams = await Examination.find(filter)
     .populate("subjectId", "name code semester credits")
     .populate("academicSessionId", "label")
     .populate({
@@ -129,6 +166,81 @@ export const getExaminationsService = async (filter) => {
       populate: { path: "userId", select: "name email" },
     })
     .sort({ examDate: -1, createdAt: -1 });
+
+  return exams.map((exam) => {
+    const isLocked = Boolean(exam.isLocked);
+    const lockedTime = exam.lockedAt ? new Date(exam.lockedAt).getTime() : null;
+    const lockExpiresAt = lockedTime ? new Date(lockedTime + GRACE_PERIOD_MS) : null;
+    const elapsedMs = lockedTime ? Date.now() - lockedTime : 0;
+    const isPermanentlyLocked = isLocked && elapsedMs > GRACE_PERIOD_MS;
+    const remainingHours = isLocked && !isPermanentlyLocked ? Math.ceil((GRACE_PERIOD_MS - elapsedMs) / (1000 * 60 * 60)) : 0;
+    const canEdit = !isLocked || !isPermanentlyLocked;
+
+    const obj = exam.toObject();
+    return {
+      ...obj,
+      isLocked,
+      lockedAt: exam.lockedAt,
+      lockExpiresAt,
+      isPermanentlyLocked,
+      remainingHours,
+      canEdit,
+    };
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCK EXAMINATION MARKS (Starts 2-Day Edit Window)
+// ─────────────────────────────────────────────────────────────────────────────
+export const lockExaminationService = async (examinationId, requestingUser) => {
+  const exam = await Examination.findById(examinationId).populate("subjectId");
+  if (!exam) throw new ApiError(404, "Examination not found.");
+
+  let facultyId;
+  if (requestingUser.role === "faculty") {
+    const faculty = await Faculty.findOne({ userId: requestingUser._id });
+    if (!faculty || exam.subjectId.assignedFaculty?.toString() !== faculty._id.toString()) {
+      throw new ApiError(403, "You can only lock marks for your assigned courses.");
+    }
+    facultyId = faculty._id;
+  } else if (requestingUser.role === "hod") {
+    const hod = await Faculty.findOne({ userId: requestingUser._id });
+    if (!hod || hod.departmentId?.toString() !== exam.subjectId.departmentId?.toString()) {
+      throw new ApiError(403, "HOD can only lock marks for courses in their department.");
+    }
+    facultyId = hod._id;
+  } else {
+    const defaultFaculty = await Faculty.findOne();
+    facultyId = defaultFaculty ? defaultFaculty._id : null;
+  }
+
+  // Ensure at least one mark has been entered before locking
+  const marksCount = await Marks.countDocuments({ examinationId: exam._id });
+  if (marksCount === 0) {
+    throw new ApiError(400, "Cannot lock examination: No student marks have been uploaded yet. Please enter marks before locking.");
+  }
+
+  if (!exam.isLocked) {
+    exam.isLocked = true;
+    exam.lockedAt = new Date();
+    exam.lockedBy = facultyId;
+    await exam.save();
+  }
+
+  const expiresAt = new Date(new Date(exam.lockedAt).getTime() + GRACE_PERIOD_MS);
+  const remainingMs = expiresAt.getTime() - Date.now();
+  const remainingHours = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60)));
+
+  return {
+    examinationId: exam._id,
+    name: exam.name,
+    isLocked: exam.isLocked,
+    lockedAt: exam.lockedAt,
+    lockExpiresAt: expiresAt,
+    remainingHours,
+    canEdit: remainingMs > 0,
+    message: "Marks for this examination are now locked. They can still be edited within the 2-day (48-hour) grace window.",
+  };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +251,9 @@ export const submitMarksService = async (data, requestingUser) => {
 
   const exam = await Examination.findById(examinationId).populate("subjectId");
   if (!exam) throw new ApiError(404, "Examination not found.");
+
+  // Check 2-day lock and edit window
+  const lockStatus = verifyExamLockStatus(exam, requestingUser);
 
   let facultyId;
 
@@ -242,6 +357,9 @@ export const submitMarksService = async (data, requestingUser) => {
     totalRecordsProcessed: marks.length,
     newlyCreated: bulkResult.upsertedCount,
     updated: bulkResult.modifiedCount,
+    isLocked: Boolean(exam.isLocked),
+    remainingHours: lockStatus.remainingHours ?? null,
+    warning: lockStatus.remainingHours ? `Notice: Marks are locked. You have ${lockStatus.remainingHours} hour(s) remaining in the 2-day edit window.` : undefined,
   };
 };
 
@@ -251,6 +369,9 @@ export const submitMarksService = async (data, requestingUser) => {
 export const updateSingleMarksService = async (marksId, updates, requestingUser) => {
   const mark = await Marks.findById(marksId).populate("examinationId");
   if (!mark) throw new ApiError(404, "Marks record not found.");
+
+  // Check 2-day lock and edit window
+  verifyExamLockStatus(mark.examinationId, requestingUser);
 
   let facultyId;
   if (requestingUser.role === "faculty") {
@@ -297,6 +418,14 @@ export const getExaminationResultsService = async (examinationId) => {
     .populate("academicSessionId", "label");
 
   if (!exam) throw new ApiError(404, "Examination not found.");
+
+  const isLocked = Boolean(exam.isLocked);
+  const lockedTime = exam.lockedAt ? new Date(exam.lockedAt).getTime() : null;
+  const lockExpiresAt = lockedTime ? new Date(lockedTime + GRACE_PERIOD_MS) : null;
+  const elapsedMs = lockedTime ? Date.now() - lockedTime : 0;
+  const isPermanentlyLocked = isLocked && elapsedMs > GRACE_PERIOD_MS;
+  const remainingHours = isLocked && !isPermanentlyLocked ? Math.ceil((GRACE_PERIOD_MS - elapsedMs) / (1000 * 60 * 60)) : 0;
+  const canEdit = !isLocked || !isPermanentlyLocked;
 
   const marksRecords = await Marks.find({ examinationId: exam._id })
     .populate({
@@ -364,6 +493,12 @@ export const getExaminationResultsService = async (examinationId) => {
       passMarks: exam.passMarks,
       weightage: exam.weightage,
       examDate: exam.examDate,
+      isLocked,
+      lockedAt: exam.lockedAt,
+      lockExpiresAt,
+      isPermanentlyLocked,
+      remainingHours,
+      canEdit,
     },
     statistics: {
       totalStudents: results.length,
@@ -439,33 +574,52 @@ export const getStudentSemesterReportService = async (studentId, semester, acade
         }).populate("examinationId");
       }
 
-      let totalWeightedScore = 0;
+      const validMarks = studentMarks.filter((m) => m.examinationId);
+
+      // If no valid examinations or marks recorded yet, keep as PENDING
+      // NEVER default to 0 / Fail!
+      if (validMarks.length === 0) {
+        return {
+          subjectId: subject._id,
+          name: subject.name,
+          code: subject.code,
+          credits: subject.credits,
+          subjectType: subject.subjectType,
+          isEvaluated: false,
+          totalObtainedMarks: null,
+          totalMaxMarks: null,
+          percentage: null,
+          grade: "PENDING",
+          gradePoint: null,
+          isPassed: null,
+          examinations: [],
+        };
+      }
+
       let totalMaxMarks = 0;
       let totalObtainedMarks = 0;
 
-      const examBreakdown = studentMarks
-        .filter((m) => m.examinationId)
-        .map((m) => {
-          const exam = m.examinationId;
-          const maxMarks = exam.maximumMarks || 100;
-          const evaluation = calculateGrade(m.obtainedMarks, maxMarks);
+      const examBreakdown = validMarks.map((m) => {
+        const exam = m.examinationId;
+        const maxMarks = exam.maximumMarks || 100;
+        const evaluation = calculateGrade(m.obtainedMarks, maxMarks);
 
-          totalMaxMarks += maxMarks;
-          totalObtainedMarks += m.obtainedMarks;
+        totalMaxMarks += maxMarks;
+        totalObtainedMarks += m.obtainedMarks;
 
-          return {
-            examinationName: exam.name || "Assessment",
-            examType: exam.examType || "regular",
-            maximumMarks: maxMarks,
-            passMarks: exam.passMarks || 40,
-            obtainedMarks: m.obtainedMarks,
-            isAbsent: m.isAbsent || false,
-            percentage: evaluation.percentage,
-            grade: evaluation.grade,
-            gradePoint: evaluation.gradePoint,
-            isPassed: !m.isAbsent && m.obtainedMarks >= (exam.passMarks || 40),
-          };
-        });
+        return {
+          examinationName: exam.name || "Assessment",
+          examType: exam.examType || "regular",
+          maximumMarks: maxMarks,
+          passMarks: exam.passMarks || 40,
+          obtainedMarks: m.obtainedMarks,
+          isAbsent: m.isAbsent || false,
+          percentage: evaluation.percentage,
+          grade: evaluation.grade,
+          gradePoint: evaluation.gradePoint,
+          isPassed: !m.isAbsent && m.obtainedMarks >= (exam.passMarks || 40),
+        };
+      });
 
       const overallSubjectEval = calculateGrade(totalObtainedMarks, totalMaxMarks || 100);
 
@@ -475,6 +629,7 @@ export const getStudentSemesterReportService = async (studentId, semester, acade
         code: subject.code,
         credits: subject.credits,
         subjectType: subject.subjectType,
+        isEvaluated: true,
         totalObtainedMarks,
         totalMaxMarks,
         percentage: overallSubjectEval.percentage,
@@ -486,11 +641,21 @@ export const getStudentSemesterReportService = async (studentId, semester, acade
     })
   );
 
-  // Compute SGPA across all courses
-  const sgpa = calculateSGPA(subjectReports);
+  const totalSubjects = subjectReports.length;
+  const evaluatedSubjects = subjectReports.filter((s) => s.isEvaluated);
+  const pendingSubjects = subjectReports.filter((s) => !s.isEvaluated);
+  const isComplete = totalSubjects > 0 && pendingSubjects.length === 0;
 
-  const totalCredits = subjectReports.reduce((sum, s) => sum + s.credits, 0);
-  const allPassed = subjectReports.every((s) => s.isPassed);
+  let sgpa = null;
+  let resultStatus = "PENDING";
+  const totalCredits = subjectReports.reduce((sum, s) => sum + (s.credits || 0), 0);
+
+  // SGPA is strictly calculated ONLY when all enrolled subjects have been evaluated
+  if (isComplete) {
+    sgpa = calculateSGPA(subjectReports);
+    const allPassed = subjectReports.every((s) => s.isPassed);
+    resultStatus = allPassed ? "PASSED" : "FAILED";
+  }
 
   return {
     student: {
@@ -499,14 +664,17 @@ export const getStudentSemesterReportService = async (studentId, semester, acade
       email: student.userId.email,
       rollNumber: student.rollNumber,
       enrollmentNumber: student.enrollmentNumber,
-      department: student.departmentId.name,
+      department: student.departmentId?.name || "Academic Department",
       semester,
     },
     academicSummary: {
-      totalSubjects: subjectReports.length,
+      totalSubjects,
       totalCredits,
+      evaluatedSubjectsCount: evaluatedSubjects.length,
+      pendingSubjectsCount: pendingSubjects.length,
+      isComplete,
       sgpa,
-      resultStatus: allPassed ? "PASSED" : "FAILED",
+      resultStatus,
     },
     subjects: subjectReports,
   };

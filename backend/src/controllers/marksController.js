@@ -8,6 +8,7 @@ import {
   getExaminationsService,
   submitMarksService,
   updateSingleMarksService,
+  lockExaminationService,
   getExaminationResultsService,
   getStudentSemesterReportService,
 } from "../services/marksService.js";
@@ -85,6 +86,18 @@ export const submitMarks = async (req, res, next) => {
     const result = await submitMarksService(req.body, req.user);
     res.status(200).json(
       new ApiResponse(200, "Marks submitted successfully.", result)
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const lockExamination = async (req, res, next) => {
+  try {
+    const { examId } = req.params;
+    const result = await lockExaminationService(examId, req.user);
+    res.status(200).json(
+      new ApiResponse(200, "Examination marks locked successfully.", result)
     );
   } catch (error) {
     next(error);
@@ -269,12 +282,79 @@ export const getStudentPerformance = async (req, res, next) => {
       subjectCourseMap.get(sId).gradePoints.push(rec.gradePoint);
     });
 
-    // Also include active enrollments to count registered credits
-    const enrollments = await Enrollment.find({
+    // Fetch active enrollments for this semester to verify completeness
+    const enrollmentFilter = {
       studentId: student._id,
       status: "active",
       ...(targetSemester ? { semester: targetSemester } : {}),
-    }).populate("subjectId");
+    };
+    if (academicSessionId) {
+      enrollmentFilter.academicSessionId = academicSessionId;
+    }
+
+    let enrollments = await Enrollment.find(enrollmentFilter).populate("subjectId");
+    if (!enrollments.length && academicSessionId) {
+      enrollments = await Enrollment.find({
+        studentId: student._id,
+        status: "active",
+        ...(targetSemester ? { semester: targetSemester } : {}),
+      }).populate("subjectId");
+    }
+    enrollments = enrollments.filter((e) => e.subjectId);
+
+    const evaluatedSubjectIds = new Set(
+      formattedRecords
+        .filter((r) => r.subject?._id)
+        .map((r) => r.subject._id.toString())
+    );
+
+    // Any enrolled subject without marks is included with PENDING status
+    // It will NEVER default to 0 / F
+    const pendingCourseRecords = [];
+    enrollments.forEach((e) => {
+      const sId = e.subjectId._id.toString();
+      if (!evaluatedSubjectIds.has(sId)) {
+        pendingCourseRecords.push({
+          _id: `pending_${sId}`,
+          examinationId: null,
+          examination: {
+            name: "Semester Evaluation",
+            examType: "Semester Exam",
+            maximumMarks: 100,
+            passMarks: 40,
+            weightage: 100,
+            subject: {
+              _id: e.subjectId._id,
+              name: e.subjectId.name,
+              code: e.subjectId.code,
+            },
+          },
+          subject: {
+            _id: e.subjectId._id,
+            name: e.subjectId.name,
+            code: e.subjectId.code,
+            credits: e.subjectId.credits || 3,
+            semester: e.subjectId.semester,
+          },
+          marksObtained: null,
+          score: null,
+          maximumMarks: null,
+          percentage: null,
+          grade: "PENDING",
+          gradePoint: null,
+          isPassed: null,
+          isAbsent: false,
+          isPending: true,
+          remarks: "Awaiting evaluation",
+        });
+      }
+    });
+
+    const allRecords = [...formattedRecords, ...pendingCourseRecords];
+
+    const totalEnrolledCount = enrollments.length;
+    const evaluatedCount = evaluatedSubjectIds.size;
+    const isComplete = totalEnrolledCount > 0 && evaluatedCount >= totalEnrolledCount;
 
     let totalCredits = 0;
     enrollments.forEach((e) => {
@@ -287,23 +367,34 @@ export const getStudentPerformance = async (req, res, next) => {
       });
     }
 
-    const coursesForSgpa = [];
-    subjectCourseMap.forEach((val) => {
-      const avgGp =
-        val.gradePoints.length > 0
-          ? val.gradePoints.reduce((a, b) => a + b, 0) / val.gradePoints.length
-          : 0;
-      coursesForSgpa.push({ credits: val.credits, gradePoint: avgGp });
-    });
+    let calculatedSgpa = null;
+    let evaluationStatus = "PENDING";
 
-    const calculatedSgpa = coursesForSgpa.length > 0 ? calculateSGPA(coursesForSgpa) : null;
+    // SGPA is calculated ONLY when all enrolled subjects have been graded
+    if (isComplete) {
+      const coursesForSgpa = [];
+      subjectCourseMap.forEach((val) => {
+        const avgGp =
+          val.gradePoints.length > 0
+            ? val.gradePoints.reduce((a, b) => a + b, 0) / val.gradePoints.length
+            : 0;
+        coursesForSgpa.push({ credits: val.credits, gradePoint: avgGp });
+      });
+      calculatedSgpa = coursesForSgpa.length > 0 ? calculateSGPA(coursesForSgpa) : null;
+      evaluationStatus = "PUBLISHED";
+    }
 
     res.status(200).json(
       new ApiResponse(200, "Student academic performance fetched successfully.", {
-        sgpa: calculatedSgpa ?? "N/A",
+        sgpa: isComplete ? calculatedSgpa : null,
+        isComplete,
+        evaluationStatus,
+        totalEnrolledCourses: totalEnrolledCount,
+        evaluatedCoursesCount: evaluatedCount,
+        pendingCoursesCount: Math.max(0, totalEnrolledCount - evaluatedCount),
         totalCredits,
-        records: formattedRecords,
-        marks: formattedRecords,
+        records: allRecords,
+        marks: allRecords,
       })
     );
   } catch (error) {

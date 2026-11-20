@@ -65,14 +65,19 @@ export const StudentPerformance = () => {
   }
 
   const marksList = performance?.records || performance?.marks || [];
-  const sgpa = performance?.sgpa ?? "N/A";
+  const isComplete = Boolean(performance?.isComplete);
+  const sgpa = isComplete && performance?.sgpa !== null && performance?.sgpa !== undefined ? performance.sgpa : null;
   const totalCredits = performance?.totalCredits ?? 0;
+  const pendingCount = performance?.pendingCoursesCount ?? 0;
+  const evaluatedCount = performance?.evaluatedCoursesCount ?? marksList.filter((m) => !m.isPending && m.grade !== "PENDING").length;
+  const totalCourses = performance?.totalEnrolledCourses ?? marksList.length;
 
   const getGradeVariant = (grade) => {
     if (grade === "O") return "gradeO";
     if (grade === "A+" || grade === "A") return "gradeA";
     if (grade === "B+" || grade === "B") return "gradeB";
     if (grade === "F") return "gradeF";
+    if (grade === "PENDING") return "warning";
     return "neutral";
   };
 
@@ -89,14 +94,28 @@ export const StudentPerformance = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleDownloadReportCard}
-          disabled={downloadingPdf}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          <FileDown className="w-4 h-4" />
-          <span>{downloadingPdf ? "Exporting PDF..." : "Download Official PDF"}</span>
-        </button>
+        <div className="flex flex-col sm:items-end gap-1 shrink-0">
+          <button
+            onClick={handleDownloadReportCard}
+            disabled={downloadingPdf || !isComplete}
+            title={!isComplete ? "Report card download will unlock once all semester subjects are evaluated." : "Download Official PDF"}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <FileDown className="w-4 h-4" />
+            <span>
+              {downloadingPdf
+                ? "Exporting PDF..."
+                : !isComplete
+                ? "Report Card Locked"
+                : "Download Official PDF"}
+            </span>
+          </button>
+          {!isComplete && (
+            <span className="text-[10px] text-amber-400 font-medium">
+              Available when all {totalCourses} subjects are graded
+            </span>
+          )}
+        </div>
       </div>
 
       {/* SGPA & Credits Hero Box */}
@@ -110,10 +129,18 @@ export const StudentPerformance = () => {
               Current Semester SGPA
             </p>
             <h2 className="text-3xl font-extrabold text-alice tracking-tight mt-0.5">
-              {sgpa} <span className="text-sm font-normal text-alice-dim">/ 10.0</span>
+              {isComplete ? (
+                <>
+                  {sgpa} <span className="text-sm font-normal text-alice-dim">/ 10.0</span>
+                </>
+              ) : (
+                <span className="text-amber-400 text-2xl font-bold">PENDING</span>
+              )}
             </h2>
             <p className="text-[11px] text-melrose font-medium mt-1">
-              Credit-Weighted Performance Index
+              {isComplete
+                ? "Credit-Weighted Performance Index"
+                : `Awaiting evaluation (${pendingCount} subject(s) pending)`}
             </p>
           </div>
         </div>
@@ -129,7 +156,7 @@ export const StudentPerformance = () => {
             <h2 className="text-3xl font-extrabold text-alice tracking-tight mt-0.5">
               {totalCredits}
             </h2>
-            <p className="text-[11px] text-alice-dim mt-1">Total credit weight evaluated</p>
+            <p className="text-[11px] text-alice-dim mt-1">Total credit weight enrolled</p>
           </div>
         </div>
 
@@ -141,15 +168,26 @@ export const StudentPerformance = () => {
             <p className="text-xs uppercase tracking-wider font-semibold text-alice-muted">
               Evaluation Status
             </p>
-            <h2 className="text-2xl font-extrabold text-alice tracking-tight mt-0.5">
-              {marksList.length > 0 ? "PUBLISHED" : "PENDING"}
+            <h2 className={`text-2xl font-extrabold tracking-tight mt-0.5 ${isComplete ? "text-emerald-400" : "text-amber-400"}`}>
+              {isComplete ? "PUBLISHED" : "IN PROGRESS"}
             </h2>
             <p className="text-[11px] text-alice-dim mt-1">
-              {marksList.length} assessment record(s) indexed
+              {evaluatedCount} of {totalCourses} course(s) graded
             </p>
           </div>
         </div>
       </div>
+
+      {/* In-progress Banner */}
+      {!isComplete && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-3 text-xs text-amber-200">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          <div>
+            <span className="font-bold uppercase tracking-wider text-amber-300">Semester Grading In Progress: </span>
+            SGPA calculation and official grade card download will activate once marks for all {totalCourses} enrolled subjects are evaluated by faculty.
+          </div>
+        </div>
+      )}
 
       {/* Marks & CBCS Grades Table */}
       <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-4">
@@ -173,12 +211,13 @@ export const StudentPerformance = () => {
                   const subjectName = m.subject?.name || m.examination?.subject?.name || "Course Subject";
                   const subjectCode = m.subject?.code || m.examination?.subject?.code || "SUB";
                   const examTitle = m.examination?.name || m.examination?.examType || "Assessment";
-                  const score = m.marksObtained ?? (m.isAbsent ? "ABS" : 0);
+                  const isPending = m.isPending || m.grade === "PENDING" || m.marksObtained === null;
+                  const score = isPending ? null : (m.marksObtained ?? (m.isAbsent ? "ABS" : 0));
                   const max = m.examination?.maximumMarks || 100;
-                  const pct = typeof score === "number" ? Math.round((score / max) * 100) : 0;
-                  const grade = m.grade || "P";
-                  const gp = m.gradePoint ?? 5;
-                  const isPass = m.isPassed ?? (grade !== "F" && !m.isAbsent);
+                  const pct = typeof score === "number" ? Math.round((score / max) * 100) : null;
+                  const grade = isPending ? "PENDING" : (m.grade || "P");
+                  const gp = isPending ? null : (m.gradePoint ?? 5);
+                  const isPass = isPending ? null : (m.isPassed ?? (grade !== "F" && !m.isAbsent));
 
                   return (
                     <tr key={m._id || idx} className="hover:bg-charcoal-elevated/40 transition-colors">
@@ -191,22 +230,34 @@ export const StudentPerformance = () => {
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-center font-mono">
-                        <span className="text-alice font-bold">{score}</span>
-                        <span className="text-alice-dim"> / {max}</span>
+                        {isPending ? (
+                          <span className="text-alice-dim italic">-- / --</span>
+                        ) : (
+                          <>
+                            <span className="text-alice font-bold">{score}</span>
+                            <span className="text-alice-dim"> / {max}</span>
+                          </>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-center font-mono text-alice-muted">
-                        {pct}%
+                        {isPending ? "--" : `${pct}%`}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <Badge variant={getGradeVariant(grade)}>{grade}</Badge>
                       </td>
                       <td className="py-3.5 px-4 text-center font-mono font-bold text-alice">
-                        {gp}
+                        {isPending ? "--" : gp}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <Badge variant={isPass ? "success" : "danger"}>
-                          {isPass ? "PASS" : "FAIL"}
-                        </Badge>
+                        {isPending ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            AWAITING
+                          </span>
+                        ) : (
+                          <Badge variant={isPass ? "success" : "danger"}>
+                            {isPass ? "PASS" : "FAIL"}
+                          </Badge>
+                        )}
                       </td>
                     </tr>
                   );

@@ -85,7 +85,8 @@ export const StudentDashboard = () => {
 
   const overallAtt = attendanceSummary?.overallPercentage ?? 0;
   const isShortage = overallAtt < 75 && (attendanceSummary?.totalClasses || 0) > 0;
-  const currentSgpa = performance?.sgpa ?? "N/A";
+  const isComplete = Boolean(performance?.isComplete);
+  const currentSgpa = isComplete && performance?.sgpa !== null && performance?.sgpa !== undefined ? performance.sgpa : null;
 
   return (
     <div className="space-y-6">
@@ -129,14 +130,22 @@ export const StudentDashboard = () => {
           </div>
 
           {/* Action button */}
-          <button
-            onClick={handleDownloadReportCard}
-            disabled={downloadingPdf}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)] cursor-pointer disabled:opacity-50 shrink-0"
-          >
-            <FileDown className="w-3.5 h-3.5" />
-            <span>{downloadingPdf ? "Generating..." : "Download Report Card"}</span>
-          </button>
+          <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
+            <button
+              onClick={handleDownloadReportCard}
+              disabled={downloadingPdf || !isComplete}
+              title={!isComplete ? "Report card download will unlock once all semester subjects are graded." : "Download Report Card"}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>{downloadingPdf ? "Generating..." : !isComplete ? "Grade Card Locked" : "Download Report Card"}</span>
+            </button>
+            {!isComplete && (
+              <span className="text-[10px] text-amber-400 font-medium">
+                Available when all subjects are graded
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -198,11 +207,11 @@ export const StudentDashboard = () => {
 
         <StatCard
           title="Grade Average (SGPA)"
-          value={typeof currentSgpa === "number" ? currentSgpa.toFixed(2) : currentSgpa}
-          subvalue="Current semester score"
+          value={isComplete && typeof currentSgpa === "number" ? currentSgpa.toFixed(2) : "PENDING"}
+          subvalue={isComplete ? "Current semester score" : "Awaiting course evaluation"}
           icon={Award}
           accent="melrose"
-          trend="SGPA"
+          trend={isComplete ? "SGPA" : "In Progress"}
           trendType="neutral"
         />
 

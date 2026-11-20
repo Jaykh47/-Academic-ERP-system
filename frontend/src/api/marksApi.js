@@ -21,6 +21,12 @@ export const marksApi = {
     return res.data;
   },
 
+  // Lock marks for examination (freezes scores with a 2-day edit window)
+  lockExamination: async (examinationId) => {
+    const res = await axiosClient.patch(`/marks/examinations/${examinationId}/lock`);
+    return res.data;
+  },
+
   // Student academic performance & SGPA
   getStudentPerformance: async (studentId, params = {}) => {
     const endpoint = studentId ? `/marks/student/${studentId}/performance` : `/marks/my-performance`;
