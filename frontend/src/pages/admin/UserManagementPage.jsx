@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { adminApi } from "../../api/adminApi";
 import { useToast } from "../../context/ToastContext";
 import { formatApiError } from "../../utils/errorHelper";
@@ -17,24 +17,43 @@ import {
   Briefcase,
   ToggleLeft,
   ToggleRight,
+  Building2,
+  BookOpen,
+  Calendar,
+  Eye,
+  Mail,
+  Phone,
+  MapPin,
+  ChevronRight,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 export const UserManagementPage = () => {
   const { success, error, warning } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [faculty, setFaculty] = useState([]);
+  const [admins, setAdmins] = useState([]);
+
+  // Selection Hierarchy:
+  // 1. Department selection ('all', 'admin', or department._id)
+  const [selectedDeptId, setSelectedDeptId] = useState("all");
+  // 2. Section selection ('staff' or 'student' or 'admin')
+  const [activeSection, setActiveSection] = useState("staff");
+
+  // Search & Filters
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [semesterFilter, setSemesterFilter] = useState("");
 
   // Modals
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
+  const [selectedUserDetail, setSelectedUserDetail] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // New Student Form State
@@ -61,29 +80,16 @@ export const UserManagementPage = () => {
     departmentId: "",
   });
 
-  const fetchUsers = async () => {
+  // Fetch all departments, sessions, students, faculty, and admins
+  const loadDirectoryData = async () => {
     try {
       setLoading(true);
-      const params = { page, limit: 10 };
-      if (search) params.search = search;
-      if (roleFilter) params.role = roleFilter;
-
-      const res = await adminApi.getUsers(params);
-      setUsers(res?.data?.users || []);
-      setTotalPages(res?.data?.pages || 1);
-      setTotalUsers(res?.data?.total || 0);
-    } catch (err) {
-      error(formatApiError(err, "Failed to load user list"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMetadata = async () => {
-    try {
-      const [deptRes, sessRes] = await Promise.allSettled([
+      const [deptRes, sessRes, studRes, facRes, userRes] = await Promise.allSettled([
         adminApi.getDepartments(),
         adminApi.getSessions(),
+        adminApi.getStudents({ limit: 500 }),
+        adminApi.getFaculty({ limit: 500 }),
+        adminApi.getUsers({ role: "admin", limit: 100 }),
       ]);
 
       if (deptRes.status === "fulfilled") {
@@ -103,41 +109,180 @@ export const UserManagementPage = () => {
           setStudentForm((prev) => ({ ...prev, admissionSessionId: curr._id }));
         }
       }
-    } catch {
-      // Ignore
+
+      if (studRes.status === "fulfilled") {
+        setStudents(studRes.value?.data?.students || []);
+      }
+
+      if (facRes.status === "fulfilled") {
+        setFaculty(facRes.value?.data?.faculty || []);
+      }
+
+      if (userRes.status === "fulfilled") {
+        setAdmins(userRes.value?.data?.users || []);
+      }
+    } catch (err) {
+      error(formatApiError(err, "Failed to load directory"));
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMetadata();
+    loadDirectoryData();
   }, []);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, roleFilter]);
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchUsers();
+  // Compute departmental statistics
+  const getDeptStats = (deptId) => {
+    if (deptId === "all") {
+      return {
+        staff: faculty.length,
+        students: students.length,
+        admins: admins.length,
+        total: faculty.length + students.length + admins.length,
+      };
+    }
+    if (deptId === "admin") {
+      return {
+        staff: 0,
+        students: 0,
+        admins: admins.length,
+        total: admins.length,
+      };
+    }
+    const staffCount = faculty.filter((f) => f.departmentId?._id === deptId).length;
+    const studentCount = students.filter((s) => s.departmentId?._id === deptId).length;
+    return {
+      staff: staffCount,
+      students: studentCount,
+      admins: 0,
+      total: staffCount + studentCount,
+    };
   };
 
-  const handleToggleStatus = async (userId) => {
+  // Get active department metadata
+  const activeDepartment = useMemo(() => {
+    if (selectedDeptId === "all") return { name: "All Academic Departments", code: "ALL" };
+    if (selectedDeptId === "admin") return { name: "System Administration & Security", code: "ADMIN" };
+    return departments.find((d) => d._id === selectedDeptId) || null;
+  }, [selectedDeptId, departments]);
+
+  // Dynamic list based on Department + Section + Search + Filters
+  const filteredRecords = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    if (activeSection === "staff") {
+      return faculty.filter((f) => {
+        if (selectedDeptId !== "all" && f.departmentId?._id !== selectedDeptId) {
+          return false;
+        }
+        if (statusFilter === "active" && !f.userId?.isActive) return false;
+        if (statusFilter === "inactive" && f.userId?.isActive) return false;
+        if (q) {
+          const name = (f.userId?.name || "").toLowerCase();
+          const email = (f.userId?.email || "").toLowerCase();
+          const empId = (f.employeeId || "").toLowerCase();
+          const desig = (f.designation || "").toLowerCase();
+          return name.includes(q) || email.includes(q) || empId.includes(q) || desig.includes(q);
+        }
+        return true;
+      });
+    }
+
+    if (activeSection === "student") {
+      return students.filter((s) => {
+        if (selectedDeptId !== "all" && s.departmentId?._id !== selectedDeptId) {
+          return false;
+        }
+        if (statusFilter === "active" && !s.userId?.isActive) return false;
+        if (statusFilter === "inactive" && s.userId?.isActive) return false;
+        if (semesterFilter && s.currentSemester !== parseInt(semesterFilter, 10)) {
+          return false;
+        }
+        if (q) {
+          const name = (s.userId?.name || "").toLowerCase();
+          const email = (s.userId?.email || "").toLowerCase();
+          const roll = (s.rollNumber || "").toLowerCase();
+          const enroll = (s.enrollmentNumber || "").toLowerCase();
+          return name.includes(q) || email.includes(q) || roll.includes(q) || enroll.includes(q);
+        }
+        return true;
+      });
+    }
+
+    if (activeSection === "admin") {
+      return admins.filter((a) => {
+        if (statusFilter === "active" && !a.isActive) return false;
+        if (statusFilter === "inactive" && a.isActive) return false;
+        if (q) {
+          const name = (a.name || "").toLowerCase();
+          const email = (a.email || "").toLowerCase();
+          return name.includes(q) || email.includes(q);
+        }
+        return true;
+      });
+    }
+
+    return [];
+  }, [faculty, students, admins, activeSection, selectedDeptId, search, statusFilter, semesterFilter]);
+
+  // Toggle account status
+  const handleToggleStatus = async (userId, e) => {
+    if (e) e.stopPropagation();
     try {
       await adminApi.toggleUserStatus(userId);
-      setUsers((prev) =>
-        prev.map((u) => {
-          if (u._id === userId) {
-            const newStatus = u.accountStatus === "active" ? "inactive" : "active";
-            return { ...u, accountStatus: newStatus };
-          }
-          return u;
-        })
+
+      // Optimistically update all lists
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.userId?._id === userId
+            ? { ...s, userId: { ...s.userId, isActive: !s.userId.isActive } }
+            : s
+        )
       );
-      success("User account status updated!");
+      setFaculty((prev) =>
+        prev.map((f) =>
+          f.userId?._id === userId
+            ? { ...f, userId: { ...f.userId, isActive: !f.userId.isActive } }
+            : f
+        )
+      );
+      setAdmins((prev) =>
+        prev.map((a) => (a._id === userId ? { ...a, isActive: !a.isActive } : a))
+      );
+
+      // Update active detail modal if open
+      if (selectedUserDetail) {
+        const detailUserId = selectedUserDetail.userId?._id || selectedUserDetail._id;
+        if (detailUserId === userId) {
+          setSelectedUserDetail((prev) => {
+            if (prev.userId) {
+              return { ...prev, userId: { ...prev.userId, isActive: !prev.userId.isActive } };
+            }
+            return { ...prev, isActive: !prev.isActive };
+          });
+        }
+      }
+
+      success("Account authorization updated successfully!");
     } catch (err) {
-      error(formatApiError(err, "Failed to update status"));
+      error(formatApiError(err, "Failed to update account status"));
     }
+  };
+
+  // Open modals pre-configured with active department
+  const handleOpenStudentModal = () => {
+    if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
+      setStudentForm((prev) => ({ ...prev, departmentId: selectedDeptId }));
+    }
+    setIsStudentModalOpen(true);
+  };
+
+  const handleOpenFacultyModal = () => {
+    if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
+      setFacultyForm((prev) => ({ ...prev, departmentId: selectedDeptId }));
+    }
+    setIsFacultyModalOpen(true);
   };
 
   const handleCreateStudent = async (e) => {
@@ -171,7 +316,7 @@ export const UserManagementPage = () => {
         admissionYear: new Date().getFullYear(),
         currentSemester: 1,
       });
-      fetchUsers();
+      loadDirectoryData();
     } catch (err) {
       error(formatApiError(err, "Failed to create student"));
     } finally {
@@ -200,7 +345,7 @@ export const UserManagementPage = () => {
         designation: "Assistant Professor",
         departmentId: departments[0]?._id || "",
       });
-      fetchUsers();
+      loadDirectoryData();
     } catch (err) {
       error(formatApiError(err, "Failed to create faculty"));
     } finally {
@@ -208,22 +353,34 @@ export const UserManagementPage = () => {
     }
   };
 
+  // Switch department handler
+  const handleSelectDepartment = (deptId) => {
+    setSelectedDeptId(deptId);
+    if (deptId === "admin") {
+      setActiveSection("admin");
+    } else if (activeSection === "admin") {
+      setActiveSection("staff");
+    }
+  };
+
+  const currentStats = getDeptStats(selectedDeptId);
+
   return (
     <div className="space-y-6">
-      {/* Header & Provision Buttons */}
+      {/* ── Top Header & Provisioning Action Buttons ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-alice tracking-tight">
             User Directory & Access Control
           </h1>
           <p className="text-xs text-alice-muted mt-1">
-            Provision academic accounts, assign institutional departments, and control login authorization.
+            Organized departmental directory: navigate by department, toggle between staff and student sections, and manage login authorization.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start md:self-auto">
           <button
-            onClick={() => setIsStudentModalOpen(true)}
+            onClick={handleOpenStudentModal}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all cursor-pointer"
           >
             <GraduationCap className="w-4 h-4" />
@@ -231,7 +388,7 @@ export const UserManagementPage = () => {
           </button>
 
           <button
-            onClick={() => setIsFacultyModalOpen(true)}
+            onClick={handleOpenFacultyModal}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-melrose-light shadow-lg shadow-melrose/20 transition-all cursor-pointer"
           >
             <Briefcase className="w-4 h-4" />
@@ -240,97 +397,447 @@ export const UserManagementPage = () => {
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="p-4 rounded-2xl bg-charcoal-card border border-charcoal-border flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs outline-none focus:border-downy"
-          />
-        </form>
+      {/* ── LEVEL 1: DEPARTMENTS SELECTOR ── */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-alice-muted flex items-center gap-1.5">
+            <Building2 className="w-3.5 h-3.5 text-downy" />
+            Select Academic Department
+          </span>
+          <span className="text-[11px] text-alice-dim">
+            {departments.length} Academic Departments Configured
+          </span>
+        </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-alice-dim" />
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs font-semibold outline-none focus:border-downy"
-          >
-            <option value="">All Roles</option>
-            <option value="student">Students</option>
-            <option value="faculty">Faculty</option>
-            <option value="admin">Administrators</option>
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* All Departments Option */}
+          {(() => {
+            const allStats = getDeptStats("all");
+            const isSelected = selectedDeptId === "all";
+            return (
+              <button
+                type="button"
+                onClick={() => handleSelectDepartment("all")}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
+                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`p-2 rounded-xl ${
+                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-downy"
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-alice-muted border border-charcoal-border">
+                        ALL
+                      </span>
+                      <h4 className="text-sm font-bold text-alice mt-0.5">All Departments</h4>
+                    </div>
+                  </div>
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                </div>
+
+                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
+                  <span>{allStats.staff} Staff</span>
+                  <span>•</span>
+                  <span>{allStats.students} Students</span>
+                </div>
+              </button>
+            );
+          })()}
+
+          {/* Department Cards */}
+          {departments.map((d) => {
+            const stats = getDeptStats(d._id);
+            const isSelected = selectedDeptId === d._id;
+            return (
+              <button
+                key={d._id}
+                type="button"
+                onClick={() => handleSelectDepartment(d._id)}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
+                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`p-2 rounded-xl ${
+                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-melrose"
+                      }`}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20 font-bold">
+                        {d.code}
+                      </span>
+                      <h4 className="text-xs font-bold text-alice mt-0.5 line-clamp-1" title={d.name}>
+                        {d.name}
+                      </h4>
+                    </div>
+                  </div>
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                </div>
+
+                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
+                  <span className="text-melrose font-semibold">{stats.staff} Staff</span>
+                  <span>•</span>
+                  <span className="text-jonquil font-semibold">{stats.students} Students</span>
+                </div>
+              </button>
+            );
+          })}
+
+          {/* System Administration Option */}
+          {(() => {
+            const adminStats = getDeptStats("admin");
+            const isSelected = selectedDeptId === "admin";
+            return (
+              <button
+                type="button"
+                onClick={() => handleSelectDepartment("admin")}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
+                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`p-2 rounded-xl ${
+                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-jonquil"
+                      }`}
+                    >
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-alice-muted border border-charcoal-border">
+                        ADMIN
+                      </span>
+                      <h4 className="text-sm font-bold text-alice mt-0.5">Administration</h4>
+                    </div>
+                  </div>
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                </div>
+
+                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
+                  <span className="text-downy font-semibold">{adminStats.admins} System Admin</span>
+                  <span>Role Protected</span>
+                </div>
+              </button>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-alice">Registered Academic Accounts</h3>
-          <span className="text-xs text-alice-muted font-mono">{totalUsers} users found</span>
+      {/* ── LEVEL 2 & 3 CONTAINER: SECTION SELECTOR & DIRECTORY LIST ── */}
+      <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-6">
+        {/* Section Header & Subtitle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-charcoal-border/70 gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2.5 py-0.5 rounded-md bg-downy/15 text-downy border border-downy/30 font-bold font-mono">
+                {activeDepartment?.code || "DEPT"}
+              </span>
+              <h2 className="text-lg font-bold text-alice">
+                {activeDepartment?.name || "Academic Department"}
+              </h2>
+            </div>
+            <p className="text-xs text-alice-muted mt-1">
+              Select between Staff or Student section to browse individual accounts.
+            </p>
+          </div>
+
+          {/* ── LEVEL 2: SECTION SELECTOR (STAFF vs STUDENT vs ADMIN) ── */}
+          <div className="flex items-center p-1 rounded-2xl bg-charcoal-elevated border border-charcoal-border/80 self-start sm:self-auto">
+            {selectedDeptId !== "admin" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("staff")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeSection === "staff"
+                      ? "bg-melrose text-charcoal shadow-md shadow-melrose/20"
+                      : "text-alice-muted hover:text-alice"
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Faculty & Staff</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                      activeSection === "staff" ? "bg-charcoal text-melrose" : "bg-charcoal-card text-alice-dim"
+                    }`}
+                  >
+                    {currentStats.staff}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSection("student")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeSection === "student"
+                      ? "bg-downy text-charcoal shadow-md shadow-downy/20"
+                      : "text-alice-muted hover:text-alice"
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Student Section</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                      activeSection === "student" ? "bg-charcoal text-downy" : "bg-charcoal-card text-alice-dim"
+                    }`}
+                  >
+                    {currentStats.students}
+                  </span>
+                </button>
+              </>
+            )}
+
+            {(selectedDeptId === "all" || selectedDeptId === "admin") && (
+              <button
+                type="button"
+                onClick={() => setActiveSection("admin")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSection === "admin"
+                    ? "bg-jonquil text-charcoal shadow-md shadow-jonquil/20"
+                    : "text-alice-muted hover:text-alice"
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Administrators</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                    activeSection === "admin" ? "bg-charcoal text-jonquil" : "bg-charcoal-card text-alice-dim"
+                  }`}
+                >
+                  {currentStats.admins}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Search & In-Section Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                activeSection === "staff"
+                  ? "Search staff by name, email, employee ID..."
+                  : activeSection === "student"
+                  ? "Search students by name, roll no, email..."
+                  : "Search admins by name or email..."
+              }
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs outline-none focus:border-downy transition-all"
+            />
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {/* Semester Filter (Only for Students) */}
+            {activeSection === "student" && (
+              <select
+                value={semesterFilter}
+                onChange={(e) => setSemesterFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs font-semibold outline-none focus:border-downy"
+              >
+                <option value="">All Semesters</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <option key={sem} value={sem}>
+                    Semester {sem}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Account Status Filter */}
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-alice-dim" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs font-semibold outline-none focus:border-downy"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
+            </div>
+
+            <span className="text-xs text-alice-dim font-mono hidden md:inline-block">
+              {filteredRecords.length} records
+            </span>
+          </div>
+        </div>
+
+        {/* ── LEVEL 3: NAMES & RECORDS BASED ON SELECTION ── */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-alice">
             <thead className="bg-charcoal-elevated/70 text-xs uppercase tracking-wider text-alice-muted border-b border-charcoal-border">
               <tr>
                 <th className="py-3 px-4 font-semibold">Name & Email</th>
-                <th className="py-3 px-4 font-semibold text-center">Role</th>
+                {activeSection === "staff" && (
+                  <>
+                    <th className="py-3 px-4 font-semibold">Employee ID</th>
+                    <th className="py-3 px-4 font-semibold">Designation</th>
+                    <th className="py-3 px-4 font-semibold text-center">Department</th>
+                  </>
+                )}
+                {activeSection === "student" && (
+                  <>
+                    <th className="py-3 px-4 font-semibold">Roll Number</th>
+                    <th className="py-3 px-4 font-semibold text-center">Semester</th>
+                    <th className="py-3 px-4 font-semibold text-center">Department</th>
+                  </>
+                )}
+                {activeSection === "admin" && (
+                  <>
+                    <th className="py-3 px-4 font-semibold text-center">Role Authority</th>
+                    <th className="py-3 px-4 font-semibold text-center">Privileges</th>
+                  </>
+                )}
                 <th className="py-3 px-4 font-semibold text-center">Status</th>
                 <th className="py-3 px-4 font-semibold text-center">Toggle Access</th>
-                <th className="py-3 px-4 font-semibold text-right">Registration Date</th>
+                <th className="py-3 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-charcoal-border/50 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-alice-muted">
-                    <LoadingSpinner label="Fetching user records..." />
+                  <td colSpan={7} className="py-12 text-center text-alice-muted">
+                    <LoadingSpinner label="Fetching selected departmental directory records..." />
                   </td>
                 </tr>
-              ) : users.length > 0 ? (
-                users.map((u) => {
-                  const roleVariant =
-                    u.role === "admin"
-                      ? "downy"
-                      : u.role === "faculty" || u.role === "hod"
-                      ? "melrose"
-                      : "jonquil";
-
-                  const isActive = u.accountStatus === "active" || !u.accountStatus;
+              ) : filteredRecords.length > 0 ? (
+                filteredRecords.map((item) => {
+                  const userObj = item.userId || item;
+                  const isActive = userObj.isActive;
+                  const userId = userObj._id;
+                  const role = userObj.role || (activeSection === "student" ? "student" : "faculty");
 
                   return (
-                    <tr key={u._id} className="hover:bg-charcoal-elevated/40 transition-colors">
+                    <tr
+                      key={item._id || userId}
+                      onClick={() => setSelectedUserDetail(item)}
+                      className="hover:bg-charcoal-elevated/40 transition-colors cursor-pointer group"
+                    >
+                      {/* Name & Email */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-alice">{u.name}</div>
-                        <div className="text-[11px] font-mono text-alice-dim mt-0.5">{u.email}</div>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border ${
+                              role === "admin"
+                                ? "bg-downy/15 text-downy border-downy/30"
+                                : role === "faculty" || role === "hod"
+                                ? "bg-melrose/15 text-melrose border-melrose/30"
+                                : "bg-jonquil/15 text-[#bfd948] border-jonquil/30"
+                            }`}
+                          >
+                            {userObj.avatar ? (
+                              <img
+                                src={userObj.avatar}
+                                alt={userObj.name}
+                                className="w-full h-full object-cover rounded-xl"
+                              />
+                            ) : (
+                              userObj.name?.charAt(0)?.toUpperCase() || "U"
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-alice group-hover:text-downy transition-colors flex items-center gap-1.5">
+                              <span>{userObj.name}</span>
+                              {role === "hod" && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-melrose/20 text-melrose font-mono">
+                                  HOD
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] font-mono text-alice-dim mt-0.5">
+                              {userObj.email}
+                            </div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <Badge variant={roleVariant}>{u.role?.toUpperCase()}</Badge>
-                      </td>
+
+                      {/* Staff Specific Columns */}
+                      {activeSection === "staff" && (
+                        <>
+                          <td className="py-3.5 px-4 font-mono font-bold text-alice">
+                            {item.employeeId || "FAC-N/A"}
+                          </td>
+                          <td className="py-3.5 px-4 text-alice-muted font-medium">
+                            {item.designation || "Faculty Member"}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20">
+                              {item.departmentId?.code || "N/A"}
+                            </span>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Student Specific Columns */}
+                      {activeSection === "student" && (
+                        <>
+                          <td className="py-3.5 px-4 font-mono font-bold text-alice">
+                            {item.rollNumber}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-semibold text-downy">
+                            Sem {item.currentSemester}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20">
+                              {item.departmentId?.code || "N/A"}
+                            </span>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Admin Specific Columns */}
+                      {activeSection === "admin" && (
+                        <>
+                          <td className="py-3.5 px-4 text-center">
+                            <Badge variant="downy">SUPER ADMIN</Badge>
+                          </td>
+                          <td className="py-3.5 px-4 text-center text-alice-muted">
+                            Full RBAC Authorization
+                          </td>
+                        </>
+                      )}
+
+                      {/* Account Status Badge */}
                       <td className="py-3.5 px-4 text-center">
                         <Badge variant={isActive ? "success" : "danger"}>
                           {isActive ? "ACTIVE" : "INACTIVE"}
                         </Badge>
                       </td>
+
+                      {/* Toggle Access Switch */}
                       <td className="py-3.5 px-4 text-center">
-                        {u.role !== "admin" ? (
+                        {role !== "admin" ? (
                           <button
-                            onClick={() => handleToggleStatus(u._id)}
+                            type="button"
+                            onClick={(e) => handleToggleStatus(userId, e)}
                             className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                               isActive
-                                ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
-                                : "bg-downy/10 border-downy/20 text-downy hover:bg-downy/20"
+                                ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:scale-105"
+                                : "bg-downy/10 border-downy/20 text-downy hover:bg-downy/20 hover:scale-105"
                             }`}
-                            title={isActive ? "Suspend User" : "Activate User"}
+                            title={isActive ? "Deactivate Login Access" : "Activate Login Access"}
                           >
                             {isActive ? (
                               <ToggleRight className="w-5 h-5" />
@@ -339,51 +846,228 @@ export const UserManagementPage = () => {
                             )}
                           </button>
                         ) : (
-                          <span className="text-alice-dim text-[11px]">Protected</span>
+                          <span className="text-alice-dim text-[11px] font-mono">Protected</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right text-alice-dim font-mono">
-                        {new Date(u.createdAt || Date.now()).toLocaleDateString()}
+
+                      {/* Details Button */}
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserDetail(item)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-charcoal-elevated border border-charcoal-border hover:border-downy text-alice-muted hover:text-alice text-xs font-semibold transition-all cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-downy" />
+                          <span>View</span>
+                        </button>
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-alice-muted">
-                    No users matching criteria.
+                  <td colSpan={7} className="py-12 text-center text-alice-muted">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Users className="w-8 h-8 text-alice-dim/50" />
+                      <p className="font-semibold text-alice">No matching records found</p>
+                      <p className="text-xs text-alice-dim max-w-sm">
+                        There are currently no {activeSection === "staff" ? "staff members" : activeSection === "student" ? "students" : "users"} registered under this department filter.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center pt-3 border-t border-charcoal-border/60 text-xs text-alice-muted">
-            <span>Page {page} of {totalPages}</span>
-            <div className="flex gap-1.5">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40 cursor-pointer"
-              >
-                Previous
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 rounded-lg border border-charcoal-border hover:bg-charcoal-elevated disabled:opacity-40 cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Create Student Modal */}
+      {/* ── USER PROFILE DETAIL MODAL / DRAWER ── */}
+      {selectedUserDetail && (
+        <Modal
+          isOpen={!!selectedUserDetail}
+          onClose={() => setSelectedUserDetail(null)}
+          title="Account Profile & Details"
+          subtitle="Complete record of selected academic entity"
+          maxWidth="max-w-lg"
+        >
+          {(() => {
+            const userObj = selectedUserDetail.userId || selectedUserDetail;
+            const isStudent = !!selectedUserDetail.rollNumber;
+            const isFaculty = !!selectedUserDetail.employeeId;
+            const isActive = userObj.isActive;
+            const role = userObj.role || (isStudent ? "student" : "faculty");
+
+            return (
+              <div className="space-y-5">
+                {/* User Header Card */}
+                <div className="p-4 rounded-2xl bg-charcoal-elevated border border-charcoal-border flex items-center justify-between">
+                  <div className="flex items-center gap-3.5">
+                    <div
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl border shrink-0 ${
+                        role === "admin"
+                          ? "bg-downy/15 text-downy border-downy/30"
+                          : role === "faculty" || role === "hod"
+                          ? "bg-melrose/15 text-melrose border-melrose/30"
+                          : "bg-jonquil/15 text-[#bfd948] border-jonquil/30"
+                      }`}
+                    >
+                      {userObj.avatar ? (
+                        <img
+                          src={userObj.avatar}
+                          alt={userObj.name}
+                          className="w-full h-full object-cover rounded-2xl"
+                        />
+                      ) : (
+                        userObj.name?.charAt(0)?.toUpperCase() || "U"
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-alice">{userObj.name}</h3>
+                      <p className="text-xs font-mono text-alice-dim">{userObj.email}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <Badge
+                          variant={
+                            role === "admin"
+                              ? "downy"
+                              : role === "faculty" || role === "hod"
+                              ? "melrose"
+                              : "jonquil"
+                          }
+                        >
+                          {role.toUpperCase()}
+                        </Badge>
+                        <Badge variant={isActive ? "success" : "danger"}>
+                          {isActive ? "ACTIVE ACCOUNT" : "INACTIVE ACCOUNT"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Specific Details Grid */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {/* Department */}
+                  <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                    <span className="text-[10px] uppercase font-bold text-alice-dim">Department</span>
+                    <p className="font-bold text-alice mt-0.5">
+                      {selectedUserDetail.departmentId?.name || "System Level"}
+                    </p>
+                    {selectedUserDetail.departmentId?.code && (
+                      <span className="text-[10px] font-mono text-downy">
+                        Code: {selectedUserDetail.departmentId.code}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Academic / Employment ID */}
+                  <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                    <span className="text-[10px] uppercase font-bold text-alice-dim">
+                      {isStudent ? "Roll Number" : isFaculty ? "Employee ID" : "System ID"}
+                    </span>
+                    <p className="font-mono font-bold text-alice mt-0.5">
+                      {selectedUserDetail.rollNumber || selectedUserDetail.employeeId || "ADMIN-SYS"}
+                    </p>
+                  </div>
+
+                  {/* Student Specific Details */}
+                  {isStudent && (
+                    <>
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Current Semester</span>
+                        <p className="font-bold text-downy mt-0.5">
+                          Semester {selectedUserDetail.currentSemester}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Enrollment No</span>
+                        <p className="font-mono font-bold text-alice mt-0.5">
+                          {selectedUserDetail.enrollmentNumber || "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Admission Session</span>
+                        <p className="font-bold text-alice mt-0.5">
+                          {selectedUserDetail.admissionSessionId?.label || "2024-2025"}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Guardian Name</span>
+                        <p className="font-bold text-alice mt-0.5">
+                          {selectedUserDetail.guardianName || "Not provided"}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Faculty Specific Details */}
+                  {isFaculty && (
+                    <>
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Designation</span>
+                        <p className="font-bold text-melrose mt-0.5">
+                          {selectedUserDetail.designation || "Assistant Professor"}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
+                        <span className="text-[10px] uppercase font-bold text-alice-dim">Faculty Role</span>
+                        <p className="font-bold text-alice mt-0.5">
+                          {userObj.role === "hod" ? "Head of Department (HOD)" : "Teaching Faculty"}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Account Toggle & Footer Actions */}
+                <div className="pt-3 border-t border-charcoal-border flex items-center justify-between">
+                  {role !== "admin" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(userObj._id)}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20"
+                          : "bg-downy/10 border border-downy/30 text-downy hover:bg-downy/20"
+                      }`}
+                    >
+                      {isActive ? (
+                        <>
+                          <UserX className="w-4 h-4 text-rose-400" />
+                          <span>Deactivate User Account</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-4 h-4 text-downy" />
+                          <span>Activate User Account</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-alice-dim font-mono">
+                      Administrator account cannot be deactivated.
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUserDetail(null)}
+                    className="px-4 py-2 rounded-xl bg-charcoal-elevated hover:bg-charcoal text-alice text-xs font-bold cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
+
+      {/* ── CREATE STUDENT MODAL ── */}
       <Modal
         isOpen={isStudentModalOpen}
         onClose={() => setIsStudentModalOpen(false)}
@@ -550,7 +1234,7 @@ export const UserManagementPage = () => {
         </form>
       </Modal>
 
-      {/* Create Faculty Modal */}
+      {/* ── CREATE FACULTY MODAL ── */}
       <Modal
         isOpen={isFacultyModalOpen}
         onClose={() => setIsFacultyModalOpen(false)}
