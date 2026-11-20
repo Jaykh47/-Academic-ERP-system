@@ -12,11 +12,7 @@ import {
   Award,
   Users,
   CheckSquare,
-  ArrowRight,
-  Sparkles,
-  Clock,
   Layers,
-  Terminal,
 } from "lucide-react";
 
 export const FacultyDashboard = () => {
@@ -48,29 +44,29 @@ export const FacultyDashboard = () => {
   }, []);
 
   if (loading) {
-    return <LoadingSpinner label="Loading faculty academic load and classes..." />;
+    return <LoadingSpinner label="Loading faculty classes and courses..." />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Executive Faculty Banner */}
+      {/* Faculty Welcome Banner */}
       <div className="relative overflow-hidden rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-6 md:p-8 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)]">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#080C14] border border-white/[0.08] text-xs font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              <span className="text-slate-400">FACULTY TERMINAL</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+              <span className="text-slate-400">FACULTY PORTAL</span>
               <span className="text-slate-600">•</span>
-              <span className="text-indigo-300 font-semibold">{profile?.employeeId || "FAC-BCA-001"}</span>
+              <span className="text-indigo-300 font-semibold">{profile?.employeeId || "FAC-001"}</span>
               <span className="text-slate-600">•</span>
-              <span className="text-slate-300">{profile?.designation || "Associate Professor"}</span>
+              <span className="text-slate-300">{profile?.designation || "Assistant Professor"}</span>
             </div>
 
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-              Academic Instruction Console
+              Faculty Dashboard
             </h1>
             <p className="text-xs md:text-sm text-slate-400 max-w-xl leading-relaxed">
-              Curriculum delivery, session attendance ledger, and CBCS relative grading entry.
+              Mark class attendance, enter examination marks, and manage your assigned subject modules.
             </p>
           </div>
 
@@ -99,30 +95,30 @@ export const FacultyDashboard = () => {
         <StatCard
           title="Assigned Courses"
           value={subjects.length || 3}
-          subvalue="Current term allocations"
+          subvalue="Current semester courses"
           icon={BookOpen}
           accent="melrose"
-          trend="Syllabus mapped"
+          trend="Assigned"
           trendType="neutral"
         />
 
         <StatCard
           title="Class Sessions"
           value={recentSessions.length || 18}
-          subvalue="Ledger entries logged"
+          subvalue="Logged sessions"
           icon={CalendarCheck}
           accent="downy"
-          trend="Session verified"
+          trend="Classes logged"
           trendType="up"
         />
 
         <StatCard
-          title="Enrolled Cohort"
+          title="Total Students"
           value="48"
-          subvalue="Undergraduate Students"
+          subvalue="Across all classes"
           icon={Users}
           accent="jonquil"
-          trend="High attendance rate"
+          trend="Enrolled"
           trendType="up"
         />
       </div>
@@ -133,10 +129,10 @@ export const FacultyDashboard = () => {
           <div>
             <div className="flex items-center gap-2">
               <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              <h3 className="text-sm font-bold text-white tracking-tight">Assigned Courses & Modules</h3>
+              <h3 className="text-sm font-bold text-white tracking-tight">My Courses</h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Select an allocated course to record session attendance or input examination marks
+              Select a course to mark attendance or enter student marks
             </p>
           </div>
         </div>
@@ -177,7 +173,7 @@ export const FacultyDashboard = () => {
                   to={`/faculty/marks?subjectId=${sub._id}`}
                   className="flex-1 text-center py-1.5 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-mono font-medium text-indigo-300 transition-all"
                 >
-                  Marks Entry
+                  Enter Marks
                 </Link>
               </div>
             </div>

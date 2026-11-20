@@ -6,17 +6,13 @@ import { StatCard } from "../../components/common/StatCard";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 import { Badge } from "../../components/common/Badge";
 import {
-  Users,
   GraduationCap,
   Briefcase,
   BookOpen,
   Calendar,
   UserPlus,
-  Shield,
   ArrowRight,
-  Sparkles,
   Activity,
-  Layers,
 } from "lucide-react";
 
 export const AdminDashboard = () => {
@@ -41,8 +37,6 @@ export const AdminDashboard = () => {
         if (usersRes.status === "fulfilled") {
           const uData = usersRes.value?.data;
           setRecentUsers(uData?.users || []);
-          // Calculate counts
-          const total = uData?.total || 0;
           const students = uData?.users?.filter((u) => u.role === "student").length || 48;
           const faculty = uData?.users?.filter((u) => u.role === "faculty" || u.role === "hod").length || 13;
           setStudentsCount(students);
@@ -69,23 +63,22 @@ export const AdminDashboard = () => {
   }, []);
 
   if (loading) {
-    return <LoadingSpinner label="Compiling college administration statistics..." />;
+    return <LoadingSpinner label="Loading administration overview..." />;
   }
 
   const currentSession = sessions.find((s) => s.isCurrent) || sessions[0];
 
   return (
     <div className="space-y-6">
-      {/* Executive Command Banner */}
+      {/* Overview Banner */}
       <div className="relative overflow-hidden rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-6 md:p-8 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)]">
-        {/* Subtle grid line accent */}
         <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-teal-500/[0.03] to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#080C14] border border-white/[0.08] text-xs font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-              <span className="text-slate-300">ADMINISTRATIVE COMMAND CONSOLE</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+              <span className="text-slate-300">ADMIN OVERVIEW</span>
               {currentSession && (
                 <>
                   <span className="text-slate-600">•</span>
@@ -95,10 +88,10 @@ export const AdminDashboard = () => {
             </div>
 
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
-              Institutional <span className="text-teal-400">Governance</span> Overview
+              College <span className="text-teal-400">Overview</span>
             </h1>
             <p className="text-xs md:text-sm text-slate-400 max-w-xl leading-relaxed">
-              Real-time user authorization, multi-department academic records, and institutional CBCS framework administration.
+              Overview of enrolled students, faculty members, academic departments, and active sessions.
             </p>
           </div>
 
@@ -125,32 +118,32 @@ export const AdminDashboard = () => {
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Active Students"
+          title="Total Students"
           value={studentsCount || 48}
-          subvalue="Enrolled across semesters"
+          subvalue="Enrolled students"
           icon={GraduationCap}
           accent="jonquil"
-          trend="Identity verified"
+          trend="Enrolled"
           trendType="up"
         />
 
         <StatCard
           title="Faculty Members"
           value={facultyCount || 13}
-          subvalue="Teaching staff & HODs"
+          subvalue="Teachers & HODs"
           icon={Briefcase}
           accent="melrose"
-          trend="Department allocated"
+          trend="Active"
           trendType="neutral"
         />
 
         <StatCard
-          title="Academic Departments"
+          title="Departments"
           value={deptsCount || 3}
           subvalue="BCA, BBA, BSCIT"
           icon={BookOpen}
           accent="downy"
-          trend="UG Programmes Active"
+          trend="Active Programs"
           trendType="neutral"
         />
 
@@ -160,28 +153,28 @@ export const AdminDashboard = () => {
           subvalue={currentSession?.name || "AY 2024-2025"}
           icon={Calendar}
           accent="jonquil"
-          trend={currentSession ? "Session active" : "Term configured"}
+          trend={currentSession ? "Current Term" : "Configured"}
           trendType="neutral"
         />
       </div>
 
-      {/* Recent Users & System Activities */}
+      {/* Recent Users */}
       <div className="rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-5 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)] space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <div>
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-teal-400" />
-              <h3 className="text-sm font-bold text-white tracking-tight">User Directory Snapshot</h3>
+              <h3 className="text-sm font-bold text-white tracking-tight">Recent Users</h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Recent accounts registered within the academic management system
+              Recently added accounts in the college portal
             </p>
           </div>
           <Link
             to="/admin/users"
             className="text-xs font-mono font-medium text-teal-400 hover:text-teal-300 flex items-center gap-1 transition-colors"
           >
-            <span>Full Directory</span>
+            <span>View All</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -192,8 +185,8 @@ export const AdminDashboard = () => {
               <tr>
                 <th className="py-2.5 px-4 font-semibold">User</th>
                 <th className="py-2.5 px-4 font-semibold">Email</th>
-                <th className="py-2.5 px-4 font-semibold text-center">Assigned Role</th>
-                <th className="py-2.5 px-4 font-semibold text-center">Account Status</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Role</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Status</th>
                 <th className="py-2.5 px-4 font-semibold text-right">Created</th>
               </tr>
             </thead>
@@ -241,7 +234,7 @@ export const AdminDashboard = () => {
               ) : (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500 font-mono">
-                    No user accounts found in snapshot.
+                    No user accounts found.
                   </td>
                 </tr>
               )}

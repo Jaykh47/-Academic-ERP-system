@@ -10,11 +10,6 @@ import {
   Shield,
   GraduationCap,
   Briefcase,
-  Search,
-  Command,
-  CheckCircle,
-  ExternalLink,
-  ChevronDown,
 } from "lucide-react";
 import { Badge } from "./Badge";
 
@@ -60,19 +55,13 @@ export const Navbar = ({ onToggleSidebar }) => {
 
   const handleLogout = async () => {
     await logout();
-    success("Session terminated successfully");
+    success("Logged out successfully");
     navigate("/login");
-  };
-
-  const getRoleVariant = (r) => {
-    if (r === "admin") return "downy";
-    if (r === "faculty" || r === "hod") return "melrose";
-    return "jonquil";
   };
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-[#080B11]/90 backdrop-blur-xl border-b border-white/[0.07]">
-      {/* Left: Mobile hamburger & Institutional Crest */}
+      {/* Left: Mobile hamburger & College Branding */}
       <div className="flex items-center gap-3.5">
         <button
           onClick={onToggleSidebar}
@@ -84,34 +73,22 @@ export const Navbar = ({ onToggleSidebar }) => {
           </svg>
         </button>
 
-        <div className="flex items-center gap-3">
-          {/* Institutional Monogram Icon */}
+        <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-md bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-transparent border border-teal-500/30 flex items-center justify-center text-teal-300 font-mono font-bold text-xs shadow-sm">
             Δ
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="font-bold tracking-tight text-white text-base md:text-lg">
-              ACADEMIA<span className="text-teal-400 font-mono font-light ml-0.5">//</span>OS
-            </span>
-            <span className="hidden lg:inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-400 border border-white/[0.06] font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              v2.4
-            </span>
-          </div>
+          <span className="font-bold tracking-tight text-white text-base md:text-lg">
+            Academia<span className="text-teal-400">Portal</span>
+          </span>
         </div>
       </div>
 
-      {/* Center: Live Academic Session Ticker */}
+      {/* Center: Live Academic Term Indicator */}
       <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D131F] border border-white/[0.06] text-xs font-mono">
-        <span className="text-slate-400">AY 2025–26</span>
+        <span className="text-slate-400">Academic Year 2024–2025</span>
         <span className="text-slate-600">•</span>
-        <span className="text-teal-400 font-medium">ODD SEMESTER</span>
-        <span className="text-slate-600">•</span>
-        <span className="flex items-center gap-1 text-emerald-400 text-[10px]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          ACTIVE
-        </span>
+        <span className="text-teal-400 font-medium">Active Term</span>
       </div>
 
       {/* Right: Actions, Notifications, Role chip & Logout */}
@@ -142,7 +119,7 @@ export const Navbar = ({ onToggleSidebar }) => {
               <div className="p-3 border-b border-white/[0.07] flex items-center justify-between bg-[#0B101A]">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">
-                    Official Dispatches
+                    Announcements
                   </span>
                   {unreadCount > 0 && (
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
@@ -163,7 +140,7 @@ export const Navbar = ({ onToggleSidebar }) => {
               <div className="max-h-72 overflow-y-auto divide-y divide-white/[0.04]">
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-xs text-slate-500 font-mono">
-                    No active institutional notices
+                    No new announcements
                   </div>
                 ) : (
                   notifications.map((n) => (
@@ -198,7 +175,7 @@ export const Navbar = ({ onToggleSidebar }) => {
           )}
         </div>
 
-        {/* User Monogram & Logout Button */}
+        {/* User Avatar & Logout */}
         <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
           <Link
             to="/profile"
@@ -216,7 +193,7 @@ export const Navbar = ({ onToggleSidebar }) => {
           <button
             onClick={handleLogout}
             className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors border border-transparent hover:border-rose-500/20"
-            title="End Session"
+            title="Sign Out"
             aria-label="Logout"
           >
             <LogOut className="w-4 h-4" />

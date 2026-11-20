@@ -15,7 +15,6 @@ import {
   Sparkles,
   ChevronRight,
   Layers,
-  Terminal,
 } from "lucide-react";
 
 export const Sidebar = ({ isOpen, onClose }) => {
@@ -25,27 +24,27 @@ export const Sidebar = ({ isOpen, onClose }) => {
     switch (role) {
       case "student":
         return [
-          { to: "/student", label: "Overview Console", icon: LayoutDashboard },
-          { to: "/student/profile", label: "Student Dossier", icon: User },
-          { to: "/student/enrollment", label: "Course Enrollment", icon: BookOpen },
-          { to: "/student/attendance", label: "Attendance Ledger", icon: CalendarCheck },
-          { to: "/student/performance", label: "Grades & Transcript", icon: Award },
-          { to: "/student/notifications", label: "Notice Board", icon: Bell },
+          { to: "/student", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/student/profile", label: "My Profile", icon: User },
+          { to: "/student/enrollment", label: "Course Registration", icon: BookOpen },
+          { to: "/student/attendance", label: "Attendance Records", icon: CalendarCheck },
+          { to: "/student/performance", label: "Grades & Results", icon: Award },
+          { to: "/student/notifications", label: "Announcements", icon: Bell },
         ];
       case "faculty":
       case "hod":
         return [
-          { to: "/faculty", label: "Faculty Terminal", icon: LayoutDashboard },
-          { to: "/faculty/profile", label: "Staff Profile", icon: User },
-          { to: "/faculty/attendance", label: "Session Attendance", icon: CheckSquare },
-          { to: "/faculty/marks", label: "Examination Scoring", icon: Award },
+          { to: "/faculty", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/faculty/profile", label: "My Profile", icon: User },
+          { to: "/faculty/attendance", label: "Class Attendance", icon: CheckSquare },
+          { to: "/faculty/marks", label: "Enter Marks", icon: Award },
         ];
       case "admin":
         return [
-          { to: "/admin", label: "Command Center", icon: LayoutDashboard },
-          { to: "/admin/profile", label: "Administrator ID", icon: User },
-          { to: "/admin/users", label: "Directory & Access", icon: Users },
-          { to: "/admin/academic", label: "Curriculum Setup", icon: BookOpen },
+          { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/admin/profile", label: "My Profile", icon: User },
+          { to: "/admin/users", label: "User Directory", icon: Users },
+          { to: "/admin/academic", label: "Academic Setup", icon: BookOpen },
         ];
       default:
         return [];
@@ -64,18 +63,18 @@ export const Sidebar = ({ isOpen, onClose }) => {
         />
       )}
 
-      {/* Bespoke Institutional Sidebar */}
+      {/* Navigation Sidebar */}
       <aside
         className={`fixed top-16 bottom-0 left-0 z-40 w-64 bg-[#0A0E17]/95 backdrop-blur-2xl border-r border-white/[0.07] transition-transform duration-300 md:translate-x-0 flex flex-col justify-between ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="p-4 space-y-5">
-          {/* Executive User Chip */}
+          {/* User Profile Chip */}
           <NavLink
             to="/profile"
             className="group relative p-3 rounded-xl bg-[#0F1624] border border-white/[0.08] hover:border-teal-500/40 transition-all flex items-center gap-3 overflow-hidden"
-            title="View Profile Dossier"
+            title="View Profile"
           >
             <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center text-teal-400 shrink-0 overflow-hidden shadow-inner">
               {user?.avatar ? (
@@ -92,12 +91,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
             <div className="overflow-hidden flex-1 min-w-0">
               <div className="text-xs font-semibold text-slate-100 truncate group-hover:text-teal-300 transition-colors">
-                {user?.name || "Authorized User"}
+                {user?.name || "User Account"}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold truncate">
-                  {role} // ACTIVE
+                  {role}
                 </span>
               </div>
             </div>
@@ -107,12 +106,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
           {/* Navigation Links */}
           <nav className="space-y-1">
-            <div className="flex items-center justify-between px-2.5 pb-2">
-              <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-                <Terminal className="w-3 h-3 text-teal-400/60" />
-                DIRECTORY
+            <div className="px-2.5 pb-2">
+              <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-slate-500">
+                MAIN MENU
               </span>
-              <span className="text-[9px] font-mono text-slate-600">v2.4</span>
             </div>
 
             {navLinks.map((item) => {
@@ -139,7 +136,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </nav>
         </div>
 
-        {/* Footer: Institutional Compliance & Architecture */}
+        {/* Footer: Academic System Info */}
         <div className="p-4 border-t border-white/[0.06] space-y-3">
           <div className="p-3 rounded-lg bg-[#0C111C] border border-white/[0.05] space-y-1.5">
             <div className="flex items-center justify-between">
@@ -148,17 +145,17 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 CBCS 10-POINT
               </span>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 font-semibold">
-                UGC A++
+                UGC
               </span>
             </div>
             <p className="text-[10px] text-slate-500 leading-relaxed">
-              Standardized relative grading, credit audit, and institutional compliance ledger.
+              Standardized Choice Based Credit System (CBCS) relative grading.
             </p>
           </div>
 
-          <div className="flex items-center justify-between px-1 text-[10px] font-mono text-slate-600">
-            <span>SECURE INSTANCE</span>
-            <span>PORT 5000</span>
+          <div className="flex items-center justify-between px-1 text-[10px] font-mono text-slate-500">
+            <span>COLLEGE PORTAL</span>
+            <span>ACTIVE TERM</span>
           </div>
         </div>
       </aside>

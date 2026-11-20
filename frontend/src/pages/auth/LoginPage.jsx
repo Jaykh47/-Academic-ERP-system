@@ -12,12 +12,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ShieldCheck,
-  UserCheck,
   UserX,
   Loader2,
-  Shield,
-  Layers,
-  Terminal,
+  GraduationCap,
+  BookOpen,
+  CalendarCheck,
+  Award,
 } from "lucide-react";
 
 export const LoginPage = () => {
@@ -95,7 +95,6 @@ export const LoginPage = () => {
         setEmailError("No account found with this email address. Please check spelling.");
       }
     } catch (err) {
-      // Network or API check error
       setAccountInfo(null);
     } finally {
       setCheckingEmail(false);
@@ -109,7 +108,6 @@ export const LoginPage = () => {
     setEmailTouched(true);
     setFormError("");
 
-    // Clear debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -127,7 +125,6 @@ export const LoginPage = () => {
       return;
     }
 
-    // Valid syntax: clear syntax error & debounce server check
     setEmailError("");
     debounceTimerRef.current = setTimeout(() => {
       verifyEmailWithServer(trimmed);
@@ -164,7 +161,6 @@ export const LoginPage = () => {
       return;
     }
 
-    // If pre-check explicitly confirmed account does not exist
     if (accountInfo && accountInfo.exists === false) {
       setEmailError("No account found with this email address. Please verify your email.");
       return;
@@ -185,7 +181,7 @@ export const LoginPage = () => {
       const serverMsg =
         err.response?.data?.message ||
         err.response?.data?.errors?.[0]?.message ||
-        "Authentication failed. Please verify your credentials.";
+        "Login failed. Please check your credentials.";
 
       if (status === 404) {
         setEmailError("No account found with this email address. Please check your email.");
@@ -196,9 +192,7 @@ export const LoginPage = () => {
         setFormError(serverMsg);
       } else if (status === 401) {
         setPasswordError("Incorrect password. Please verify your password and try again.");
-        setFormError("Incorrect password. Please verify your credentials.");
-      } else if (status === 403) {
-        setFormError(serverMsg);
+        setFormError("Incorrect password. Please check your password.");
       } else {
         setFormError(serverMsg);
       }
@@ -212,74 +206,81 @@ export const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-[#080B11] text-[#F8FAFC] flex items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans">
-      {/* Background architectural grid */}
       <div className="absolute inset-0 bg-grid-subtle opacity-60 pointer-events-none" />
 
-      {/* Main Split Console */}
+      {/* Main Split Layout */}
       <div className="w-full max-w-4xl relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Left Panel: Institutional Telemetry & Identity */}
+        {/* Left Panel: College Information */}
         <div className="lg:col-span-6 space-y-6 hidden lg:block">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D131F] border border-white/[0.08] text-xs font-mono">
-              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-              <span className="text-slate-300">INSTITUTIONAL GATEWAY</span>
+              <span className="w-2 h-2 rounded-full bg-teal-400" />
+              <span className="text-slate-300">COLLEGE PORTAL</span>
               <span className="text-slate-600">•</span>
-              <span className="text-teal-400">AY 2025–26</span>
+              <span className="text-teal-400">2024–2025</span>
             </div>
 
             <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
-              ACADEMIA<span className="text-teal-400 font-mono font-light ml-1">//</span>OS
+              Academia<span className="text-teal-400">Portal</span>
             </h1>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Unified institutional intelligence console, role-governed access directory, and UGC CBCS relative examination grading.
+              Official academic portal for students, faculty members, and administrative staff.
             </p>
           </div>
 
-          {/* System Telemetry Chips */}
+          {/* Student & Faculty Feature Highlights */}
           <div className="p-4 rounded-xl bg-[#0D121D]/80 border border-white/[0.07] space-y-3">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-500 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-teal-400" />
-                SYSTEM TELEMETRY
-              </span>
-              <span className="text-emerald-400 flex items-center gap-1 text-[10px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                ALL SYSTEMS OPERATIONAL
-              </span>
-            </div>
+            <p className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              ACADEMIC SERVICES
+            </p>
 
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
-                <span className="text-slate-500 text-[10px]">GOVERNANCE</span>
-                <p className="text-slate-200 font-bold mt-0.5">CBCS 10-Point</p>
+            <div className="grid grid-cols-2 gap-2.5 text-xs">
+              <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.04] space-y-1">
+                <div className="flex items-center gap-1.5 text-teal-400">
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-white">Attendance</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Daily subject attendance tracking</p>
               </div>
-              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
-                <span className="text-slate-500 text-[10px]">SECURITY</span>
-                <p className="text-teal-400 font-bold mt-0.5">TLS 1.3 / RBAC</p>
+
+              <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.04] space-y-1">
+                <div className="flex items-center gap-1.5 text-indigo-400">
+                  <Award className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-white">Examination</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Marks entry & SGPA report cards</p>
               </div>
-              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
-                <span className="text-slate-500 text-[10px]">IDENTITY</span>
-                <p className="text-slate-200 font-bold mt-0.5">Real-time Check</p>
+
+              <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.04] space-y-1">
+                <div className="flex items-center gap-1.5 text-amber-400">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-white">Courses</span>
+                </div>
+                <p className="text-[11px] text-slate-400">Semester course registration</p>
               </div>
-              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
-                <span className="text-slate-500 text-[10px]">ACCREDITATION</span>
-                <p className="text-indigo-400 font-bold mt-0.5">NAAC A++ Ready</p>
+
+              <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.04] space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-400">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span className="font-semibold text-white">Grading</span>
+                </div>
+                <p className="text-[11px] text-slate-400">UGC 10-point standard scale</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Panel: Sleek Authentication Console */}
+        {/* Right Panel: Sign In Card */}
         <div className="lg:col-span-6 w-full max-w-md mx-auto">
           <div className="rounded-xl bg-[#0D121D]/90 backdrop-blur-2xl border border-white/[0.08] p-6 sm:p-8 shadow-[0_4px_30px_-2px_rgba(0,0,0,0.6)] space-y-5">
             {/* Header */}
             <div className="pb-3 border-b border-white/[0.06] flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight">
-                  Account Authentication
+                  Sign In
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Sign in with your registered college credential
+                  Enter your email and password to access your account
                 </p>
               </div>
               <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400">
@@ -287,7 +288,7 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            {/* Form-level error alert */}
+            {/* Error alert */}
             {formError && (
               <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/25 flex items-start gap-2.5 text-rose-300 text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
@@ -300,12 +301,12 @@ export const LoginPage = () => {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
-                    Institutional Email
+                    Email Address
                   </label>
                   {checkingEmail && (
                     <span className="text-[11px] text-teal-400 flex items-center gap-1 font-mono">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      Verifying...
+                      Checking email...
                     </span>
                   )}
                 </div>
@@ -415,11 +416,11 @@ export const LoginPage = () => {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Authorizing Session...</span>
+                    <span>Signing in...</span>
                   </>
                 ) : (
                   <>
-                    <span>Authenticate & Access</span>
+                    <span>Sign In</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -428,7 +429,7 @@ export const LoginPage = () => {
 
             {/* Institutional Seal */}
             <div className="pt-3 border-t border-white/[0.06] text-center text-[10px] font-mono text-slate-500">
-              UGC CBCS 10-Point Framework • System Protected Instance
+              Official College Academic Portal
             </div>
           </div>
         </div>

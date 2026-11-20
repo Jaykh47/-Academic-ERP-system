@@ -78,9 +78,6 @@ export const StatCard = ({
               </span>
             )}
           </div>
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
-            telemetry
-          </span>
         </div>
       )}
     </div>

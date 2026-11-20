@@ -7,33 +7,20 @@ import { Badge } from "../../components/common/Badge";
 import { Modal } from "../../components/common/Modal";
 import {
   Users,
-  UserPlus,
   Search,
   Filter,
-  CheckCircle,
-  XCircle,
   Shield,
   GraduationCap,
   Briefcase,
   Building2,
   BookOpen,
-  Calendar,
   Eye,
-  Mail,
-  Phone,
-  MapPin,
-  ChevronRight,
   UserCheck,
   UserX,
-  Layers,
-  Terminal,
-  Sparkles,
-  Check,
-  CheckCircle2,
 } from "lucide-react";
 
 export const UserManagementPage = () => {
-  const { success, error, warning } = useToast();
+  const { success, error } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState([]);
@@ -162,16 +149,11 @@ export const UserManagementPage = () => {
   // Find active department object
   const activeDepartment = useMemo(() => {
     if (selectedDeptId === "all") return { name: "All Academic Departments", code: "ALL" };
-    if (selectedDeptId === "admin") return { name: "System Administration", code: "ADMIN" };
+    if (selectedDeptId === "admin") return { name: "Administration", code: "ADMIN" };
     return departments.find((d) => d._id === selectedDeptId) || { name: "Department", code: "DEPT" };
   }, [selectedDeptId, departments]);
 
-  // Filtered records based on:
-  // 1. Department selection
-  // 2. Staff vs Student vs Admin section
-  // 3. Search query
-  // 4. Status filter
-  // 5. Semester filter
+  // Filtered records
   const filteredRecords = useMemo(() => {
     let list = [];
 
@@ -206,7 +188,6 @@ export const UserManagementPage = () => {
       }));
     }
 
-    // Apply Search
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((item) => {
@@ -219,7 +200,6 @@ export const UserManagementPage = () => {
       });
     }
 
-    // Apply Status Filter
     if (statusFilter !== "all") {
       const isAct = statusFilter === "active";
       list = list.filter((item) => {
@@ -243,7 +223,6 @@ export const UserManagementPage = () => {
         }`
       );
 
-      // Local state update
       const updateList = (list) =>
         list.map((item) => {
           if (item.userId && (item.userId._id === targetUserId || item.userId === targetUserId)) {
@@ -279,7 +258,7 @@ export const UserManagementPage = () => {
         }
       }
     } catch (err) {
-      error(formatApiError(err, "Failed to toggle account authorization"));
+      error(formatApiError(err, "Failed to update account status"));
     }
   };
 
@@ -322,11 +301,11 @@ export const UserManagementPage = () => {
     try {
       setSubmitting(true);
       await adminApi.createStudent(studentForm);
-      success(`Student ${studentForm.name} provisioned successfully!`);
+      success(`Student ${studentForm.name} added successfully!`);
       setIsStudentModalOpen(false);
       fetchData();
     } catch (err) {
-      error(formatApiError(err, "Failed to provision student account"));
+      error(formatApiError(err, "Failed to add student account"));
     } finally {
       setSubmitting(false);
     }
@@ -338,17 +317,16 @@ export const UserManagementPage = () => {
     try {
       setSubmitting(true);
       await adminApi.createFaculty(facultyForm);
-      success(`Faculty member ${facultyForm.name} provisioned successfully!`);
+      success(`Faculty member ${facultyForm.name} added successfully!`);
       setIsFacultyModalOpen(false);
       fetchData();
     } catch (err) {
-      error(formatApiError(err, "Failed to provision faculty account"));
+      error(formatApiError(err, "Failed to add faculty account"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // When clicking department card
   const handleSelectDepartment = (deptId) => {
     setSelectedDeptId(deptId);
     if (deptId === "admin") {
@@ -362,20 +340,20 @@ export const UserManagementPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── Top Header & Provisioning Action Controls ── */}
+      {/* ── Top Header & Action Buttons ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1 border-b border-white/[0.06]">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-teal-400" />
             <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-semibold">
-              INSTITUTIONAL DIRECTORY // ACCESS CONTROL
+              ACADEMIC DIRECTORY
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             User Directory & Access Control
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-            Hierarchical academic governance: browse department rosters, inspect credential dossiers, and manage authentication privileges.
+            Browse students and faculty by department and manage login access.
           </p>
         </div>
 
@@ -385,7 +363,7 @@ export const UserManagementPage = () => {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)] cursor-pointer active:scale-[0.98]"
           >
             <GraduationCap className="w-3.5 h-3.5 text-[#080B11]" />
-            <span>Provision Student</span>
+            <span>Add Student</span>
           </button>
 
           <button
@@ -393,20 +371,20 @@ export const UserManagementPage = () => {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#111726] hover:bg-[#182135] text-slate-200 hover:text-white border border-white/[0.1] hover:border-white/20 font-medium text-xs transition-all shadow-sm cursor-pointer active:scale-[0.98]"
           >
             <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-            <span>Provision Faculty</span>
+            <span>Add Faculty</span>
           </button>
         </div>
       </div>
 
-      {/* ── LEVEL 1: ARCHITECTURAL DEPARTMENT SELECTOR ── */}
+      {/* ── LEVEL 1: DEPARTMENT SELECTOR ── */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
             <Building2 className="w-3.5 h-3.5 text-teal-400" />
-            SELECT ACADEMIC DEPARTMENT
+            DEPARTMENTS
           </span>
           <span className="text-[11px] font-mono text-slate-500">
-            {departments.length} ACTIVE DEPARTMENTS
+            {departments.length} Departments
           </span>
         </div>
 
@@ -425,7 +403,6 @@ export const UserManagementPage = () => {
                     : "bg-[#0D121D]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#111724]"
                 }`}
               >
-                {/* Active indicator bar */}
                 {isSelected && (
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-teal-400 rounded-t-xl" />
                 )}
@@ -446,7 +423,7 @@ export const UserManagementPage = () => {
                         All Departments
                       </h4>
                       <span className="text-[10px] font-mono text-slate-500">
-                        Entire College Campus
+                        Entire College
                       </span>
                     </div>
                   </div>
@@ -456,7 +433,7 @@ export const UserManagementPage = () => {
                 </div>
 
                 <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span>{allStats.staff} Staff</span>
+                  <span>{allStats.staff} Faculty</span>
                   <span className="text-slate-600">•</span>
                   <span>{allStats.students} Students</span>
                 </div>
@@ -479,7 +456,6 @@ export const UserManagementPage = () => {
                     : "bg-[#0D121D]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#111724]"
                 }`}
               >
-                {/* Active indicator bar */}
                 {isSelected && (
                   <div className="absolute top-0 left-0 right-0 h-[2px] bg-teal-400 rounded-t-xl" />
                 )}
@@ -500,7 +476,7 @@ export const UserManagementPage = () => {
                         {d.name}
                       </h4>
                       <span className="text-[10px] font-mono text-slate-500">
-                        Dept Code: {d.code}
+                        {d.code}
                       </span>
                     </div>
                   </div>
@@ -510,7 +486,7 @@ export const UserManagementPage = () => {
                 </div>
 
                 <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span className="text-indigo-300">{stats.staff} Staff</span>
+                  <span className="text-indigo-300">{stats.staff} Faculty</span>
                   <span className="text-slate-600">•</span>
                   <span className="text-amber-300">{stats.students} Students</span>
                 </div>
@@ -518,7 +494,7 @@ export const UserManagementPage = () => {
             );
           })}
 
-          {/* System Administration Option */}
+          {/* Administrators Option */}
           {(() => {
             const adminStats = getDeptStats("admin");
             const isSelected = selectedDeptId === "admin";
@@ -549,10 +525,10 @@ export const UserManagementPage = () => {
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-white tracking-tight">
-                        Administration
+                        Administrators
                       </h4>
                       <span className="text-[10px] font-mono text-slate-500">
-                        System Level RBAC
+                        Admin Team
                       </span>
                     </div>
                   </div>
@@ -562,8 +538,8 @@ export const UserManagementPage = () => {
                 </div>
 
                 <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <span className="text-teal-300">{adminStats.admins} Administrators</span>
-                  <span className="text-slate-500">Protected</span>
+                  <span className="text-teal-300">{adminStats.admins} Admins</span>
+                  <span className="text-slate-500">System</span>
                 </div>
               </button>
             );
@@ -571,7 +547,7 @@ export const UserManagementPage = () => {
         </div>
       </div>
 
-      {/* ── LEVEL 2 & 3 CONTAINER: SECTION CONTROLLER & DIRECTORY DATA ── */}
+      {/* ── LEVEL 2 & 3 CONTAINER: SECTION SELECTOR & ROSTER TABLE ── */}
       <div className="rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-5 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)] space-y-5">
         {/* Section Header & Segmented Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-4">
@@ -585,11 +561,11 @@ export const UserManagementPage = () => {
               </h2>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Select between Staff or Student section to browse individual roster accounts.
+              Select between Faculty or Students to view members.
             </p>
           </div>
 
-          {/* ── LEVEL 2: SLEEK SEGMENTED SWITCHER ── */}
+          {/* Segmented Switcher */}
           <div className="inline-flex items-center p-1 rounded-lg bg-[#080C14] border border-white/[0.08] self-start sm:self-auto">
             {selectedDeptId !== "admin" && (
               <>
@@ -619,7 +595,7 @@ export const UserManagementPage = () => {
                   }`}
                 >
                   <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Student Section</span>
+                  <span>Students</span>
                   <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#0A0E17] text-amber-300 border border-white/[0.06]">
                     {currentStats.students}
                   </span>
@@ -647,7 +623,7 @@ export const UserManagementPage = () => {
           </div>
         </div>
 
-        {/* Search & In-Section Filters */}
+        {/* Search & Filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-80">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -657,7 +633,7 @@ export const UserManagementPage = () => {
               onChange={(e) => setSearch(e.target.value)}
               placeholder={
                 activeSection === "staff"
-                  ? "Search staff by name, email, employee ID..."
+                  ? "Search faculty by name, email, employee ID..."
                   : activeSection === "student"
                   ? "Search students by name, roll no, email..."
                   : "Search admins by name or email..."
@@ -683,7 +659,7 @@ export const UserManagementPage = () => {
               </select>
             )}
 
-            {/* Account Status Filter */}
+            {/* Status Filter */}
             <div className="flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-slate-500" />
               <select
@@ -703,12 +679,12 @@ export const UserManagementPage = () => {
           </div>
         </div>
 
-        {/* ── LEVEL 3: TABULAR ROSTER VIEW ── */}
+        {/* ── Table Roster ── */}
         <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
           <table className="w-full text-left text-xs text-slate-200">
             <thead className="bg-[#080C14] text-[10px] font-mono tracking-widest text-slate-400 uppercase border-b border-white/[0.06]">
               <tr>
-                <th className="py-2.5 px-4 font-semibold">User Identity & Email</th>
+                <th className="py-2.5 px-4 font-semibold">Name & Email</th>
                 {activeSection === "staff" && (
                   <>
                     <th className="py-2.5 px-4 font-semibold">Employee ID</th>
@@ -725,20 +701,20 @@ export const UserManagementPage = () => {
                 )}
                 {activeSection === "admin" && (
                   <>
-                    <th className="py-2.5 px-4 font-semibold text-center">Role Authority</th>
-                    <th className="py-2.5 px-4 font-semibold text-center">Privileges</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Role</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Permissions</th>
                   </>
                 )}
                 <th className="py-2.5 px-4 font-semibold text-center">Status</th>
-                <th className="py-2.5 px-4 font-semibold text-center">Access Switch</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Dossier</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Login Access</th>
+                <th className="py-2.5 px-4 font-semibold text-right">Profile</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <LoadingSpinner label="Fetching selected departmental directory records..." />
+                    <LoadingSpinner label="Loading directory records..." />
                   </td>
                 </tr>
               ) : filteredRecords.length > 0 ? (
@@ -822,10 +798,10 @@ export const UserManagementPage = () => {
                       {activeSection === "admin" && (
                         <>
                           <td className="py-3 px-4 text-center">
-                            <Badge variant="downy">SUPER ADMIN</Badge>
+                            <Badge variant="downy">ADMIN</Badge>
                           </td>
                           <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">
-                            Full RBAC Scope
+                            Full Access
                           </td>
                         </>
                       )}
@@ -837,7 +813,7 @@ export const UserManagementPage = () => {
                         </Badge>
                       </td>
 
-                      {/* Modern iOS-style Access Switch */}
+                      {/* Access Switch */}
                       <td className="py-3 px-4 text-center">
                         {role !== "admin" ? (
                           <button
@@ -846,7 +822,7 @@ export const UserManagementPage = () => {
                             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                               isActive ? "bg-teal-500" : "bg-slate-700"
                             }`}
-                            title={isActive ? "Deactivate Login Access" : "Activate Login Access"}
+                            title={isActive ? "Disable Login Access" : "Enable Login Access"}
                           >
                             <span
                               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ${
@@ -859,7 +835,7 @@ export const UserManagementPage = () => {
                         )}
                       </td>
 
-                      {/* Dossier Button */}
+                      {/* Profile Button */}
                       <td className="py-3 px-4 text-right">
                         <button
                           type="button"
@@ -867,7 +843,7 @@ export const UserManagementPage = () => {
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white text-[11px] font-mono transition-all cursor-pointer"
                         >
                           <Eye className="w-3 h-3 text-teal-400" />
-                          <span>Dossier</span>
+                          <span>View</span>
                         </button>
                       </td>
                     </tr>
@@ -880,7 +856,7 @@ export const UserManagementPage = () => {
                       <Users className="w-7 h-7 text-slate-600" />
                       <p className="font-semibold text-white">No matching records found</p>
                       <p className="text-xs text-slate-500 max-w-sm">
-                        There are currently no {activeSection === "staff" ? "staff members" : activeSection === "student" ? "students" : "users"} registered under this department filter.
+                        There are currently no {activeSection === "staff" ? "faculty members" : activeSection === "student" ? "students" : "users"} registered under this department filter.
                       </p>
                     </div>
                   </td>
@@ -891,13 +867,13 @@ export const UserManagementPage = () => {
         </div>
       </div>
 
-      {/* ── USER PROFILE DOSSIER MODAL / INSPECTOR ── */}
+      {/* ── USER PROFILE MODAL ── */}
       {selectedUserDetail && (
         <Modal
           isOpen={!!selectedUserDetail}
           onClose={() => setSelectedUserDetail(null)}
-          title="Account Profile & Dossier"
-          subtitle="Complete institutional credential and academic profile"
+          title="User Profile"
+          subtitle="Account and academic details"
           maxWidth="max-w-lg"
         >
           {(() => {
@@ -938,13 +914,13 @@ export const UserManagementPage = () => {
                   </div>
                 </div>
 
-                {/* Specific Details Grid */}
+                {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-2.5 text-xs">
                   {/* Department */}
                   <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
                     <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Department</span>
                     <p className="font-semibold text-white mt-0.5">
-                      {selectedUserDetail.departmentId?.name || "System Level"}
+                      {selectedUserDetail.departmentId?.name || "College Administration"}
                     </p>
                     {selectedUserDetail.departmentId?.code && (
                       <span className="text-[10px] font-mono text-teal-400">
@@ -953,17 +929,17 @@ export const UserManagementPage = () => {
                     )}
                   </div>
 
-                  {/* Academic / Employment ID */}
+                  {/* ID */}
                   <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
                     <span className="text-[10px] uppercase font-mono font-bold text-slate-500">
-                      {isStudent ? "Roll Number" : isFaculty ? "Employee ID" : "System ID"}
+                      {isStudent ? "Roll Number" : isFaculty ? "Employee ID" : "Account ID"}
                     </span>
                     <p className="font-mono font-bold text-white mt-0.5">
-                      {selectedUserDetail.rollNumber || selectedUserDetail.employeeId || "ADMIN-SYS"}
+                      {selectedUserDetail.rollNumber || selectedUserDetail.employeeId || "ADMIN-01"}
                     </p>
                   </div>
 
-                  {/* Student Specific Details */}
+                  {/* Student Details */}
                   {isStudent && (
                     <>
                       <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
@@ -981,7 +957,7 @@ export const UserManagementPage = () => {
                       </div>
 
                       <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
-                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Admission Session</span>
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Academic Session</span>
                         <p className="font-semibold text-white mt-0.5">
                           {selectedUserDetail.admissionSessionId?.label || "2024-2025"}
                         </p>
@@ -990,13 +966,13 @@ export const UserManagementPage = () => {
                       <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
                         <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Guardian Contact</span>
                         <p className="font-semibold text-white mt-0.5">
-                          {selectedUserDetail.guardianName || "Not on file"}
+                          {selectedUserDetail.guardianName || "Not provided"}
                         </p>
                       </div>
                     </>
                   )}
 
-                  {/* Faculty Specific Details */}
+                  {/* Faculty Details */}
                   {isFaculty && (
                     <>
                       <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
@@ -1007,16 +983,16 @@ export const UserManagementPage = () => {
                       </div>
 
                       <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
-                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Faculty Role</span>
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Role</span>
                         <p className="font-semibold text-white mt-0.5">
-                          {userObj.role === "hod" ? "Head of Department (HOD)" : "Teaching Faculty"}
+                          {userObj.role === "hod" ? "Head of Department (HOD)" : "Faculty Member"}
                         </p>
                       </div>
                     </>
                   )}
                 </div>
 
-                {/* Account Toggle & Footer Actions */}
+                {/* Footer Actions */}
                 <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
                   {role !== "admin" ? (
                     <button
@@ -1051,7 +1027,7 @@ export const UserManagementPage = () => {
                     onClick={() => setSelectedUserDetail(null)}
                     className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-medium cursor-pointer"
                   >
-                    Close Dossier
+                    Close
                   </button>
                 </div>
               </div>
@@ -1064,13 +1040,13 @@ export const UserManagementPage = () => {
       <Modal
         isOpen={isStudentModalOpen}
         onClose={() => setIsStudentModalOpen(false)}
-        title="Provision Student Account"
-        subtitle="Generates login credentials and institutional academic ledger record"
+        title="Add New Student"
+        subtitle="Create a student account and assign their department"
       >
         <form onSubmit={handleCreateStudent} className="space-y-3.5">
           <div>
             <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-              Full Legal Name
+              Full Name
             </label>
             <input
               type="text"
@@ -1085,7 +1061,7 @@ export const UserManagementPage = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-                Institutional Email
+                Email Address
               </label>
               <input
                 type="email"
@@ -1098,7 +1074,7 @@ export const UserManagementPage = () => {
             </div>
             <div>
               <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-                Initial Password
+                Password
               </label>
               <input
                 type="password"
@@ -1178,7 +1154,7 @@ export const UserManagementPage = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-                Admission Academic Session
+                Academic Session
               </label>
               <select
                 value={studentForm.admissionSessionId}
@@ -1221,7 +1197,7 @@ export const UserManagementPage = () => {
               disabled={submitting}
               className="px-4 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs cursor-pointer shadow-sm transition-all"
             >
-              {submitting ? "Provisioning..." : "Provision Student"}
+              {submitting ? "Saving..." : "Add Student"}
             </button>
           </div>
         </form>
@@ -1231,13 +1207,13 @@ export const UserManagementPage = () => {
       <Modal
         isOpen={isFacultyModalOpen}
         onClose={() => setIsFacultyModalOpen(false)}
-        title="Provision Faculty Account"
-        subtitle="Creates instructor account & attaches departmental affiliation"
+        title="Add New Faculty"
+        subtitle="Create a new faculty account and assign their department"
       >
         <form onSubmit={handleCreateFaculty} className="space-y-3.5">
           <div>
             <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-              Full Legal Name
+              Full Name
             </label>
             <input
               type="text"
@@ -1326,7 +1302,7 @@ export const UserManagementPage = () => {
 
           <div>
             <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
-              Department Affiliation
+              Department
             </label>
             <select
               value={facultyForm.departmentId}
@@ -1354,7 +1330,7 @@ export const UserManagementPage = () => {
               disabled={submitting}
               className="px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs cursor-pointer shadow-sm transition-all"
             >
-              {submitting ? "Provisioning..." : "Provision Faculty"}
+              {submitting ? "Saving..." : "Add Faculty"}
             </button>
           </div>
         </form>
