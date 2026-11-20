@@ -29,6 +29,7 @@ const academicSessionSchema = new mongoose.Schema(
       required: [true, "Academic session label is required"],
       unique: true,
       trim: true,
+      set: (val) => (typeof val === "string" ? val.trim().replace(/[\u2013\u2014\u2212]/g, "-") : val),
       // Pattern: YYYY-YYYY (e.g. 2024-2025)
       match: [
         /^\d{4}-\d{4}$/,

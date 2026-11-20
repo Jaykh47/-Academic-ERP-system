@@ -411,8 +411,10 @@ export const createSession = async (req, res, next) => {
       enrollmentEndDate,
     } = req.body;
 
+    const rawLabel = (label || name || "").trim().replace(/[\u2013\u2014\u2212]/g, "-");
+
     const session = await AcademicSession.create({
-      label: label || name,
+      label: rawLabel,
       startDate,
       endDate,
       isCurrent: isCurrent || false,

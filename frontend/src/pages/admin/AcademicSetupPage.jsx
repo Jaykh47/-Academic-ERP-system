@@ -35,6 +35,7 @@ export const AcademicSetupPage = () => {
   // Forms
   const [deptForm, setDeptForm] = useState({ name: "", code: "" });
   const [sessionForm, setSessionForm] = useState({
+    label: "2026-2027",
     name: "2026-2027",
     startDate: "2026-07-01",
     endDate: "2027-06-30",
@@ -137,7 +138,14 @@ export const AcademicSetupPage = () => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await adminApi.createSession(sessionForm);
+      const normalizedLabel = (sessionForm.label || sessionForm.name || "")
+        .trim()
+        .replace(/[\u2013\u2014\u2212]/g, "-");
+      await adminApi.createSession({
+        ...sessionForm,
+        label: normalizedLabel,
+        name: normalizedLabel,
+      });
       success("Academic session created!");
       setModalType(null);
       loadData();
@@ -495,15 +503,18 @@ export const AcademicSetupPage = () => {
         <form onSubmit={handleCreateSession} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-              Session Name
+              Session Label (Format: YYYY-YYYY, e.g. 2026-2027)
             </label>
             <input
               type="text"
               required
-              value={sessionForm.name}
-              onChange={(e) => setSessionForm({ ...sessionForm, name: e.target.value })}
+              value={sessionForm.label || sessionForm.name || ""}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[\u2013\u2014\u2212]/g, "-");
+                setSessionForm({ ...sessionForm, label: val, name: val });
+              }}
               placeholder="e.g. 2026-2027"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy font-mono"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">

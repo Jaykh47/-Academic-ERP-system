@@ -62,7 +62,13 @@ export const adminApi = {
   },
 
   createSession: async (sessionData) => {
-    const res = await axiosClient.post("/admin/sessions", sessionData);
+    const rawLabel = (sessionData.label || sessionData.name || "").trim().replace(/[\u2013\u2014\u2212]/g, "-");
+    const payload = {
+      ...sessionData,
+      label: rawLabel,
+      name: rawLabel,
+    };
+    const res = await axiosClient.post("/admin/sessions", payload);
     return res.data;
   },
 

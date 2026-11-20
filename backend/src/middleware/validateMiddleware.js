@@ -257,7 +257,12 @@ export const createDepartmentValidation = [
 // ─────────────────────────────────────────────────────────────────────────────
 export const createSessionValidation = [
   body("label")
-    .trim()
+    .customSanitizer((value, { req }) => {
+      const raw = value || req.body.name || "";
+      const cleaned = typeof raw === "string" ? raw.trim().replace(/[\u2013\u2014\u2212]/g, "-") : raw;
+      req.body.label = cleaned;
+      return cleaned;
+    })
     .notEmpty().withMessage("Session label is required")
     .matches(/^\d{4}-\d{4}$/).withMessage("Session label must follow YYYY-YYYY format (e.g. 2024-2025)"),
 
