@@ -1,4 +1,5 @@
 import React from "react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export const StatCard = ({
   title,
@@ -9,38 +10,39 @@ export const StatCard = ({
   trend,
   trendType = "neutral", // "up" | "down" | "neutral"
 }) => {
-  const accentGlow = {
-    downy: "border-downy/20 hover:border-downy/50 shadow-downy/5",
-    melrose: "border-melrose/20 hover:border-melrose/50 shadow-melrose/5",
-    jonquil: "border-jonquil/20 hover:border-jonquil/50 shadow-jonquil/5",
-    rose: "border-rose-500/20 hover:border-rose-500/50 shadow-rose-500/5",
-  }[accent] || "border-charcoal-border";
+  // Top hairline gradient accent matching brand tokens
+  const topAccent = {
+    downy: "from-teal-400 via-emerald-500 to-transparent",
+    melrose: "from-indigo-400 via-purple-500 to-transparent",
+    jonquil: "from-amber-400 via-yellow-500 to-transparent",
+    rose: "from-rose-400 via-red-500 to-transparent",
+  }[accent] || "from-teal-400 via-emerald-500 to-transparent";
 
-  const iconAccent = {
-    downy: "bg-downy/10 text-downy border-downy/20",
-    melrose: "bg-melrose/10 text-melrose border-melrose/20",
-    jonquil: "bg-jonquil/10 text-[#bfd948] border-jonquil/20",
-    rose: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-  }[accent] || "bg-charcoal-elevated text-alice";
+  const iconColor = {
+    downy: "text-teal-400 bg-teal-500/10 border-teal-500/20",
+    melrose: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    jonquil: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    rose: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  }[accent] || "text-teal-400 bg-teal-500/10 border-teal-500/20";
 
   return (
-    <div
-      className={`group relative overflow-hidden rounded-2xl bg-charcoal-card p-5 border transition-all duration-300 hover:-translate-y-0.5 shadow-lg ${accentGlow}`}
-    >
-      {/* Decorative gradient corner */}
-      <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-white/[0.03] to-transparent rounded-bl-full pointer-events-none" />
+    <div className="group relative overflow-hidden rounded-xl bg-[#0D121D]/80 backdrop-blur-md border border-white/[0.07] p-5 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.4)] transition-all duration-300 hover:border-white/[0.14] hover:-translate-y-0.5">
+      {/* Precision hairline top accent rule */}
+      <div
+        className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${topAccent} opacity-70 group-hover:opacity-100 transition-opacity`}
+      />
 
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-alice-muted">
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
             {title}
           </p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold tracking-tight text-alice">
+          <div className="flex items-baseline gap-2.5">
+            <h3 className="text-2xl font-bold font-mono tracking-tight text-white">
               {value}
             </h3>
             {subvalue && (
-              <span className="text-xs font-normal text-alice-muted">
+              <span className="text-xs font-normal text-slate-400">
                 {subvalue}
               </span>
             )}
@@ -48,24 +50,36 @@ export const StatCard = ({
         </div>
 
         {Icon && (
-          <div className={`p-3 rounded-xl border shrink-0 transition-transform group-hover:scale-105 ${iconAccent}`}>
-            <Icon className="w-5 h-5" />
+          <div className={`p-2.5 rounded-lg border shrink-0 transition-transform group-hover:scale-105 ${iconColor}`}>
+            <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
 
       {trend && (
-        <div className="mt-3 flex items-center gap-1.5 text-xs font-medium">
-          <span
-            className={
-              trendType === "up"
-                ? "text-downy"
-                : trendType === "down"
-                ? "text-rose-400"
-                : "text-alice-muted"
-            }
-          >
-            {trend}
+        <div className="mt-3.5 pt-3 border-t border-white/[0.05] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 font-mono text-[11px]">
+            {trendType === "up" && (
+              <span className="flex items-center gap-1 text-emerald-400">
+                <TrendingUp className="w-3.5 h-3.5" />
+                {trend}
+              </span>
+            )}
+            {trendType === "down" && (
+              <span className="flex items-center gap-1 text-rose-400">
+                <TrendingDown className="w-3.5 h-3.5" />
+                {trend}
+              </span>
+            )}
+            {trendType === "neutral" && (
+              <span className="flex items-center gap-1 text-slate-400">
+                <Minus className="w-3.5 h-3.5" />
+                {trend}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
+            telemetry
           </span>
         </div>
       )}

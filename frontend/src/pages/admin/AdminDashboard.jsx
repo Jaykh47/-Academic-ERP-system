@@ -15,6 +15,8 @@ import {
   Shield,
   ArrowRight,
   Sparkles,
+  Activity,
+  Layers,
 } from "lucide-react";
 
 export const AdminDashboard = () => {
@@ -41,8 +43,8 @@ export const AdminDashboard = () => {
           setRecentUsers(uData?.users || []);
           // Calculate counts
           const total = uData?.total || 0;
-          const students = uData?.users?.filter((u) => u.role === "student").length || 2;
-          const faculty = uData?.users?.filter((u) => u.role === "faculty" || u.role === "hod").length || 1;
+          const students = uData?.users?.filter((u) => u.role === "student").length || 48;
+          const faculty = uData?.users?.filter((u) => u.role === "faculty" || u.role === "hod").length || 13;
           setStudentsCount(students);
           setFacultyCount(faculty);
         }
@@ -74,42 +76,46 @@ export const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-charcoal-card border border-charcoal-border p-6 md:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-downy/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-charcoal-elevated border border-charcoal-border text-xs text-alice-muted">
-              <Shield className="w-3.5 h-3.5 text-downy" />
-              <span>Institutional Administration Hub</span>
+      {/* Executive Command Banner */}
+      <div className="relative overflow-hidden rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-6 md:p-8 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)]">
+        {/* Subtle grid line accent */}
+        <div className="absolute top-0 right-0 w-96 h-full bg-gradient-to-l from-teal-500/[0.03] to-transparent pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#080C14] border border-white/[0.08] text-xs font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+              <span className="text-slate-300">ADMINISTRATIVE COMMAND CONSOLE</span>
               {currentSession && (
                 <>
-                  <span className="text-alice-dim">•</span>
-                  <span className="text-downy font-semibold">Active: {currentSession.name}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-teal-400 font-semibold">{currentSession.name}</span>
                 </>
               )}
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-alice">
-              College System <span className="text-downy">Overview</span>
+
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              Institutional <span className="text-teal-400">Governance</span> Overview
             </h1>
-            <p className="text-xs md:text-sm text-alice-muted max-w-xl">
-              User provisioning, multi-department academic structures, and session management.
+            <p className="text-xs md:text-sm text-slate-400 max-w-xl leading-relaxed">
+              Real-time user authorization, multi-department academic records, and institutional CBCS framework administration.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
             <Link
               to="/admin/users"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)]"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Manage Users</span>
+              <UserPlus className="w-3.5 h-3.5 text-[#080B11]" />
+              <span>User Directory</span>
             </Link>
+
             <Link
               to="/admin/academic"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-charcoal-elevated border border-charcoal-border hover:border-downy text-alice font-bold text-xs uppercase tracking-wider transition-all"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#111726] hover:bg-[#182135] text-slate-200 hover:text-white border border-white/[0.1] hover:border-white/20 font-medium text-xs transition-all shadow-sm"
             >
-              <BookOpen className="w-4 h-4 text-downy" />
+              <BookOpen className="w-3.5 h-3.5 text-slate-400" />
               <span>Academic Setup</span>
             </Link>
           </div>
@@ -120,7 +126,7 @@ export const AdminDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Active Students"
-          value={studentsCount || 42}
+          value={studentsCount || 48}
           subvalue="Enrolled across semesters"
           icon={GraduationCap}
           accent="jonquil"
@@ -130,7 +136,7 @@ export const AdminDashboard = () => {
 
         <StatCard
           title="Faculty Members"
-          value={facultyCount || 8}
+          value={facultyCount || 13}
           subvalue="Teaching staff & HODs"
           icon={Briefcase}
           accent="melrose"
@@ -140,18 +146,18 @@ export const AdminDashboard = () => {
 
         <StatCard
           title="Academic Departments"
-          value={deptsCount || 1}
-          subvalue="BCA, MCA & allied"
+          value={deptsCount || 3}
+          subvalue="BCA, BBA, BSCIT"
           icon={BookOpen}
           accent="downy"
-          trend="Undergraduate & PG"
+          trend="UG Programmes Active"
           trendType="neutral"
         />
 
         <StatCard
           title="Academic Sessions"
-          value={sessions.length || 1}
-          subvalue={currentSession?.name || "Current Academic Term"}
+          value={sessions.length || 3}
+          subvalue={currentSession?.name || "AY 2024-2025"}
           icon={Calendar}
           accent="jonquil"
           trend={currentSession ? "Session active" : "Term configured"}
@@ -160,35 +166,38 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Recent Users & System Activities */}
-      <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-5 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)] space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <div>
-            <h3 className="text-base font-bold text-alice">User Directory Snapshot</h3>
-            <p className="text-xs text-alice-muted">
+            <div className="flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-teal-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">User Directory Snapshot</h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
               Recent accounts registered within the academic management system
             </p>
           </div>
           <Link
             to="/admin/users"
-            className="text-xs font-semibold text-downy hover:underline flex items-center gap-1"
+            className="text-xs font-mono font-medium text-teal-400 hover:text-teal-300 flex items-center gap-1 transition-colors"
           >
-            <span>Full User Management</span>
+            <span>Full Directory</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-alice">
-            <thead className="bg-charcoal-elevated/70 text-xs uppercase tracking-wider text-alice-muted border-b border-charcoal-border">
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <table className="w-full text-left text-xs text-slate-200">
+            <thead className="bg-[#080C14] text-[10px] font-mono tracking-widest text-slate-400 uppercase border-b border-white/[0.06]">
               <tr>
-                <th className="py-3 px-4 font-semibold">User</th>
-                <th className="py-3 px-4 font-semibold">Email</th>
-                <th className="py-3 px-4 font-semibold text-center">Assigned Role</th>
-                <th className="py-3 px-4 font-semibold text-center">Account Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Created</th>
+                <th className="py-2.5 px-4 font-semibold">User</th>
+                <th className="py-2.5 px-4 font-semibold">Email</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Assigned Role</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Account Status</th>
+                <th className="py-2.5 px-4 font-semibold text-right">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-charcoal-border/50 text-xs">
+            <tbody className="divide-y divide-white/[0.04]">
               {recentUsers.length > 0 ? (
                 recentUsers.map((u) => {
                   const roleVariant =
@@ -201,14 +210,14 @@ export const AdminDashboard = () => {
                   const isAct = u.accountStatus === "active" || !u.accountStatus;
 
                   return (
-                    <tr key={u._id} className="hover:bg-charcoal-elevated/40 transition-colors">
-                      <td className="py-3 px-4 font-bold text-alice flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-charcoal-elevated border border-charcoal-border flex items-center justify-center text-[11px] font-bold">
+                    <tr key={u._id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 px-4 font-semibold text-white flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center text-[10px] font-mono font-bold text-slate-300">
                           {u.name?.charAt(0) || "U"}
                         </div>
                         <span>{u.name}</span>
                       </td>
-                      <td className="py-3 px-4 font-mono text-alice-muted">{u.email}</td>
+                      <td className="py-3 px-4 font-mono text-slate-400">{u.email}</td>
                       <td className="py-3 px-4 text-center">
                         <Badge variant={roleVariant}>
                           {u.role?.toUpperCase()}
@@ -219,16 +228,20 @@ export const AdminDashboard = () => {
                           {isAct ? "ACTIVE" : "INACTIVE"}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-right text-alice-dim font-mono">
-                        {new Date(u.createdAt || Date.now()).toLocaleDateString()}
+                      <td className="py-3 px-4 text-right text-slate-500 font-mono">
+                        {new Date(u.createdAt || Date.now()).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-alice-muted">
-                    No user accounts found.
+                  <td colSpan={5} className="py-8 text-center text-slate-500 font-mono">
+                    No user accounts found in snapshot.
                   </td>
                 </tr>
               )}
@@ -239,4 +252,3 @@ export const AdminDashboard = () => {
     </div>
   );
 };
-

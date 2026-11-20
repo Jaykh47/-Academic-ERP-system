@@ -15,6 +15,8 @@ import {
   ArrowRight,
   Sparkles,
   Clock,
+  Layers,
+  Terminal,
 } from "lucide-react";
 
 export const FacultyDashboard = () => {
@@ -51,40 +53,41 @@ export const FacultyDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-charcoal-card border border-charcoal-border p-6 md:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-melrose/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-charcoal-elevated border border-charcoal-border text-xs text-alice-muted">
-              <span>Employee ID:</span>
-              <span className="font-mono text-melrose font-semibold">
-                {profile?.employeeId || "FAC-BCA-001"}
-              </span>
-              <span className="text-alice-dim">•</span>
-              <span className="text-alice">{profile?.designation || "Associate Professor"}</span>
+      {/* Executive Faculty Banner */}
+      <div className="relative overflow-hidden rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-6 md:p-8 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)]">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#080C14] border border-white/[0.08] text-xs font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="text-slate-400">FACULTY TERMINAL</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-indigo-300 font-semibold">{profile?.employeeId || "FAC-BCA-001"}</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-300">{profile?.designation || "Associate Professor"}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-alice">
-              Welcome, <span className="text-melrose">{user?.name}</span>
+
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              Academic Instruction Console
             </h1>
-            <p className="text-xs md:text-sm text-alice-muted max-w-xl">
-              Academic course management, class session attendance marking, and CBCS examination scoring.
+            <p className="text-xs md:text-sm text-slate-400 max-w-xl leading-relaxed">
+              Curriculum delivery, session attendance ledger, and CBCS relative grading entry.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
             <Link
               to="/faculty/attendance"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)]"
             >
-              <CheckSquare className="w-4 h-4" />
-              <span>Mark Attendance</span>
+              <CheckSquare className="w-3.5 h-3.5 text-[#080B11]" />
+              <span>Take Attendance</span>
             </Link>
+
             <Link
               to="/faculty/marks"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-charcoal-elevated border border-charcoal-border hover:border-melrose text-alice font-bold text-xs uppercase tracking-wider transition-all"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#111726] hover:bg-[#182135] text-slate-200 hover:text-white border border-white/[0.1] hover:border-white/20 font-medium text-xs transition-all shadow-sm"
             >
-              <Award className="w-4 h-4 text-melrose" />
+              <Award className="w-3.5 h-3.5 text-indigo-400" />
               <span>Record Marks</span>
             </Link>
           </div>
@@ -96,57 +99,60 @@ export const FacultyDashboard = () => {
         <StatCard
           title="Assigned Courses"
           value={subjects.length || 3}
-          subvalue="Current semester"
+          subvalue="Current term allocations"
           icon={BookOpen}
           accent="melrose"
-          trend="Active teaching loads"
+          trend="Syllabus mapped"
           trendType="neutral"
         />
 
         <StatCard
           title="Class Sessions"
-          value={recentSessions.length || 12}
-          subvalue="Completed this month"
+          value={recentSessions.length || 18}
+          subvalue="Ledger entries logged"
           icon={CalendarCheck}
           accent="downy"
-          trend="Regularly logged"
+          trend="Session verified"
           trendType="up"
         />
 
         <StatCard
           title="Enrolled Cohort"
-          value="45"
-          subvalue="BCA Semester 1"
+          value="48"
+          subvalue="Undergraduate Students"
           icon={Users}
           accent="jonquil"
-          trend="High engagement"
+          trend="High attendance rate"
           trendType="up"
         />
       </div>
 
       {/* Course Assignments List */}
-      <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-5 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)] space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <div>
-            <h3 className="text-base font-bold text-alice">Assigned Courses & Modules</h3>
-            <p className="text-xs text-alice-muted">
-              Select a course to record session attendance or input examination marks
+            <div className="flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <h3 className="text-sm font-bold text-white tracking-tight">Assigned Courses & Modules</h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Select an allocated course to record session attendance or input examination marks
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {subjects.map((sub, idx) => (
             <div
               key={sub._id || idx}
-              className="p-5 rounded-2xl bg-charcoal-elevated border border-charcoal-border hover:border-melrose/40 transition-all space-y-4 group"
+              className="p-4 rounded-xl bg-[#080C14] border border-white/[0.07] hover:border-indigo-500/40 transition-all space-y-3.5 group"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0D121D] text-teal-300 border border-teal-500/20 font-bold">
                     {sub.code}
                   </span>
-                  <h4 className="text-base font-bold text-alice mt-1.5 group-hover:text-melrose transition-colors">
+                  <h4 className="text-sm font-bold text-white mt-1.5 group-hover:text-indigo-300 transition-colors">
                     {sub.name}
                   </h4>
                 </div>
@@ -155,23 +161,23 @@ export const FacultyDashboard = () => {
                 </Badge>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-charcoal-border/50 text-xs text-alice-dim">
+              <div className="flex items-center justify-between pt-2 border-t border-white/[0.05] text-[11px] font-mono text-slate-400">
                 <span>Semester {sub.semester}</span>
-                <span className="uppercase text-[10px] text-alice-muted">{sub.department?.code || "BCA"}</span>
+                <span className="uppercase text-slate-500">{sub.department?.code || "BCA"}</span>
               </div>
 
               <div className="flex items-center gap-2 pt-1">
                 <Link
                   to={`/faculty/attendance?subjectId=${sub._id}`}
-                  className="flex-1 text-center py-2 px-3 rounded-xl bg-charcoal border border-charcoal-border hover:border-downy text-xs font-semibold text-alice transition-all"
+                  className="flex-1 text-center py-1.5 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-mono font-medium text-slate-200 transition-all"
                 >
                   Attendance
                 </Link>
                 <Link
                   to={`/faculty/marks?subjectId=${sub._id}`}
-                  className="flex-1 text-center py-2 px-3 rounded-xl bg-charcoal border border-charcoal-border hover:border-melrose text-xs font-semibold text-alice transition-all"
+                  className="flex-1 text-center py-1.5 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-mono font-medium text-indigo-300 transition-all"
                 >
-                  Marks
+                  Marks Entry
                 </Link>
               </div>
             </div>

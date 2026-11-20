@@ -1,66 +1,136 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Primary Brand Accent (Downy from reference) */
-  --color-downy: #37CAB9;
-  --color-downy-hover: #2eb3a3;
-  --color-downy-light: #52dcce;
-  --color-downy-glow: rgba(55, 202, 185, 0.25);
+  /* Institutional Obsidian Dark Palette */
+  --color-canvas: #080B11;
+  --color-surface-base: #0D121D;
+  --color-surface-elevated: #131A29;
+  --color-surface-card: #0F1624;
+  --color-surface-glass: rgba(15, 22, 36, 0.75);
 
-  /* Secondary Soft Accent (Melrose from reference) */
-  --color-melrose: #C0B5EE;
-  --color-melrose-light: #d6cefa;
-  --color-melrose-glow: rgba(192, 181, 238, 0.25);
+  /* Hairline and Border Utilities */
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-medium: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
 
-  /* High-visibility Accent (Jonquil from reference) */
-  --color-jonquil: #E0F58E;
-  --color-jonquil-light: #edf8ae;
-  --color-jonquil-glow: rgba(224, 245, 142, 0.25);
+  /* Primary Brand Accent (Precision Teal / Emerald) */
+  --color-brand-primary: #14B8A6;
+  --color-brand-hover: #0D9488;
+  --color-brand-light: #2DD4BF;
+  --color-brand-glow: rgba(20, 184, 166, 0.2);
 
-  /* High contrast text & surface highlights (Alice Blue from reference) */
-  --color-alice: #EFF4F7;
-  --color-alice-muted: #8FA0B3;
-  --color-alice-dim: #546577;
+  /* Secondary Accent (Iris Indigo) */
+  --color-accent-indigo: #6366F1;
+  --color-accent-indigo-hover: #4F46E5;
+  --color-accent-indigo-light: #818CF8;
+  --color-accent-indigo-glow: rgba(99, 102, 241, 0.2);
 
-  /* Base structural backgrounds (Blue Charcoal from reference) */
-  --color-charcoal: #0D141C;
-  --color-charcoal-card: #131D28;
-  --color-charcoal-elevated: #1A2634;
-  --color-charcoal-surface: #223041;
-  --color-charcoal-border: rgba(239, 244, 247, 0.08);
-  --color-charcoal-border-light: rgba(239, 244, 247, 0.14);
+  /* Status Accents */
+  --color-status-success: #10B981;
+  --color-status-warning: #F59E0B;
+  --color-status-danger: #EF4444;
+  --color-status-info: #0EA5E9;
+
+  /* Backward Compatibility Tokens with Enhanced Values */
+  --color-downy: #2DD4BF;
+  --color-downy-hover: #14B8A6;
+  --color-downy-light: #5EEAD4;
+  --color-downy-glow: rgba(45, 212, 191, 0.15);
+
+  --color-melrose: #818CF8;
+  --color-melrose-light: #A5B4FC;
+  --color-melrose-glow: rgba(129, 140, 248, 0.15);
+
+  --color-jonquil: #FACC15;
+  --color-jonquil-light: #FDE047;
+  --color-jonquil-glow: rgba(250, 204, 21, 0.15);
+
+  --color-alice: #F8FAFC;
+  --color-alice-muted: #94A3B8;
+  --color-alice-dim: #64748B;
+
+  --color-charcoal: #080B11;
+  --color-charcoal-card: #0F1624;
+  --color-charcoal-elevated: #151E2E;
+  --color-charcoal-surface: #1E293B;
+  --color-charcoal-border: rgba(255, 255, 255, 0.07);
+  --color-charcoal-border-light: rgba(255, 255, 255, 0.12);
 }
 
 :root {
-  font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
 }
 
 body {
   margin: 0;
-  background-color: #0D141C;
-  color: #EFF4F7;
-  font-family: 'Lexend', sans-serif;
+  background-color: #080B11;
+  color: #F8FAFC;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   overflow-x: hidden;
+  background-image: 
+    radial-gradient(ellipse 90% 50% at 50% -10%, rgba(20, 184, 166, 0.06), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+  background-position: top center, -1px -1px, -1px -1px;
 }
 
-/* Custom scrollbars matching Blue Charcoal & Downy */
+/* Custom architectural utilities */
+.bg-grid-subtle {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: -1px -1px;
+}
+
+.glass-panel {
+  background: rgba(15, 22, 36, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(17, 24, 39, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+.bevel-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Custom scrollbars matching obsidian & brand teal */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0D141C;
+  background: #080B11;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1A2634;
-  border-radius: 4px;
+  background: #1A2436;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #37CAB9;
+  background: #2DD4BF;
+}
+
+/* Selection highlight */
+::selection {
+  background: rgba(45, 212, 191, 0.25);
+  color: #5EEAD4;
 }

@@ -10,9 +10,11 @@ import {
   Shield,
   GraduationCap,
   Briefcase,
-  ChevronDown,
+  Search,
+  Command,
   CheckCircle,
   ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 import { Badge } from "./Badge";
 
@@ -58,23 +60,23 @@ export const Navbar = ({ onToggleSidebar }) => {
 
   const handleLogout = async () => {
     await logout();
-    success("Logged out successfully");
+    success("Session terminated successfully");
     navigate("/login");
   };
 
-  const getRoleBadgeVariant = (r) => {
+  const getRoleVariant = (r) => {
     if (r === "admin") return "downy";
     if (r === "faculty" || r === "hod") return "melrose";
     return "jonquil";
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-charcoal-card/90 backdrop-blur-md border-b border-charcoal-border">
-      {/* Left: Mobile hamburger & branding */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-[#080B11]/90 backdrop-blur-xl border-b border-white/[0.07]">
+      {/* Left: Mobile hamburger & Institutional Crest */}
+      <div className="flex items-center gap-3.5">
         <button
           onClick={onToggleSidebar}
-          className="md:hidden p-2 rounded-lg text-alice-muted hover:text-alice hover:bg-charcoal-elevated transition-colors"
+          className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors border border-white/[0.06]"
           aria-label="Toggle Navigation"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -82,123 +84,140 @@ export const Navbar = ({ onToggleSidebar }) => {
           </svg>
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-downy animate-pulse shadow-sm shadow-downy" />
-          <span className="font-bold tracking-tight text-alice text-base md:text-lg">
-            Academia<span className="text-downy">Tracker</span>
-          </span>
-          <span className="hidden lg:inline-block text-xs px-2 py-0.5 rounded-md bg-charcoal-elevated text-alice-dim font-mono">
-            ERP v1.0
-          </span>
+        <div className="flex items-center gap-3">
+          {/* Institutional Monogram Icon */}
+          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-transparent border border-teal-500/30 flex items-center justify-center text-teal-300 font-mono font-bold text-xs shadow-sm">
+            Δ
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <span className="font-bold tracking-tight text-white text-base md:text-lg">
+              ACADEMIA<span className="text-teal-400 font-mono font-light ml-0.5">//</span>OS
+            </span>
+            <span className="hidden lg:inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-400 border border-white/[0.06] font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              v2.4
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Right: Role indicator, Notifications, User info, Logout */}
-      <div className="flex items-center gap-2.5 md:gap-4">
-        {/* User Role Badge */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-charcoal-border bg-charcoal-elevated text-xs font-medium text-alice">
-          {role === "admin" && <Shield className="w-3.5 h-3.5 text-downy" />}
-          {(role === "faculty" || role === "hod") && <Briefcase className="w-3.5 h-3.5 text-melrose" />}
-          {role === "student" && <GraduationCap className="w-3.5 h-3.5 text-[#bfd948]" />}
-          <span className="text-alice-muted">Portal:</span>
-          <span className="uppercase text-downy font-bold tracking-wide">{role || "User"}</span>
+      {/* Center: Live Academic Session Ticker */}
+      <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D131F] border border-white/[0.06] text-xs font-mono">
+        <span className="text-slate-400">AY 2025–26</span>
+        <span className="text-slate-600">•</span>
+        <span className="text-teal-400 font-medium">ODD SEMESTER</span>
+        <span className="text-slate-600">•</span>
+        <span className="flex items-center gap-1 text-emerald-400 text-[10px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          ACTIVE
+        </span>
+      </div>
+
+      {/* Right: Actions, Notifications, Role chip & Logout */}
+      <div className="flex items-center gap-2 md:gap-3.5">
+        {/* Role Pill */}
+        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/[0.08] bg-[#0E1523] text-xs font-mono">
+          {role === "admin" && <Shield className="w-3.5 h-3.5 text-teal-400" />}
+          {(role === "faculty" || role === "hod") && <Briefcase className="w-3.5 h-3.5 text-indigo-400" />}
+          {role === "student" && <GraduationCap className="w-3.5 h-3.5 text-amber-400" />}
+          <span className="uppercase text-slate-300 font-semibold tracking-wider text-[11px]">{role}</span>
         </div>
 
         {/* Notifications Popover */}
         <div className="relative">
           <button
             onClick={() => setShowNotifMenu(!showNotifMenu)}
-            className="relative p-2 rounded-xl text-alice-muted hover:text-alice hover:bg-charcoal-elevated transition-colors border border-transparent hover:border-charcoal-border"
+            className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/[0.08]"
             aria-label="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-jonquil animate-ping" />
-            )}
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-jonquil" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400 ring-4 ring-[#080B11]" />
             )}
           </button>
 
           {showNotifMenu && (
-            <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-charcoal-card border border-charcoal-border shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-charcoal-border">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-[#0F1624] border border-white/[0.1] shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="p-3 border-b border-white/[0.07] flex items-center justify-between bg-[#0B101A]">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-alice uppercase tracking-wider">
-                    Notifications
+                  <span className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold">
+                    Official Dispatches
                   </span>
                   {unreadCount > 0 && (
-                    <Badge variant="jonquil">{unreadCount} new</Badge>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      {unreadCount} unread
+                    </span>
                   )}
                 </div>
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-[11px] text-downy hover:underline"
+                    className="text-[11px] text-teal-400 hover:text-teal-300 font-medium transition-colors"
                   >
                     Mark all read
                   </button>
                 )}
               </div>
 
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {notifications.length > 0 ? (
+              <div className="max-h-72 overflow-y-auto divide-y divide-white/[0.04]">
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500 font-mono">
+                    No active institutional notices
+                  </div>
+                ) : (
                   notifications.map((n) => (
                     <div
                       key={n._id}
-                      className={`p-2.5 rounded-xl border text-xs transition-colors ${
-                        n.isRead
-                          ? "bg-charcoal-elevated/30 border-charcoal-border text-alice-muted"
-                          : "bg-charcoal-elevated border-downy/30 text-alice"
+                      className={`p-3 text-xs transition-colors hover:bg-white/[0.02] ${
+                        !n.isRead ? "bg-teal-500/[0.03]" : ""
                       }`}
                     >
-                      <div className="font-semibold text-alice flex items-center justify-between">
-                        <span>{n.title}</span>
-                        <span className="text-[10px] text-alice-dim">
-                          {new Date(n.createdAt).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-slate-200">{n.title}</span>
+                        {!n.isRead && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 mt-1" />
+                        )}
                       </div>
-                      <p className="text-alice-muted mt-1 leading-snug">{n.message}</p>
+                      <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        {n.message}
+                      </p>
+                      <span className="text-[10px] font-mono text-slate-500 mt-1.5 block">
+                        {new Date(n.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
                   ))
-                ) : (
-                  <p className="text-center py-6 text-xs text-alice-muted">
-                    No recent notifications
-                  </p>
                 )}
               </div>
             </div>
           )}
         </div>
 
-        {/* User Profile Pill & Logout */}
-        <div className="flex items-center gap-2 pl-2 border-l border-charcoal-border">
+        {/* User Monogram & Logout Button */}
+        <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
           <Link
             to="/profile"
-            className="flex items-center gap-2.5 hover:opacity-90 transition-opacity group"
-            title="View My Profile"
+            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/[0.05] text-slate-300 hover:text-white transition-colors"
+            title="My Profile"
           >
-            <div className="w-8 h-8 rounded-full bg-charcoal-elevated border border-charcoal-border group-hover:border-downy/60 transition-colors flex items-center justify-center text-alice font-bold text-xs uppercase overflow-hidden shrink-0">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user?.name || "User"} className="w-full h-full object-cover" />
-              ) : (
-                user?.name ? user.name.charAt(0).toUpperCase() : "U"
-              )}
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center text-xs font-mono font-bold text-slate-200">
+              {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
             </div>
-            <div className="hidden md:block text-left">
-              <div className="text-xs font-bold text-alice leading-tight truncate max-w-[120px] group-hover:text-downy transition-colors">
-                {user?.name || "User"}
-              </div>
-              <div className="text-[10px] text-alice-muted uppercase tracking-wider">
-                {role}
-              </div>
-            </div>
+            <span className="hidden md:inline-block text-xs font-medium max-w-[110px] truncate text-slate-200">
+              {user?.name}
+            </span>
           </Link>
 
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-alice-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-1 cursor-pointer"
-            title="Sign out"
+            className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors border border-transparent hover:border-rose-500/20"
+            title="End Session"
+            aria-label="Logout"
           >
             <LogOut className="w-4 h-4" />
           </button>

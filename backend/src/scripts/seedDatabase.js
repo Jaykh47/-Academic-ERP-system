@@ -799,7 +799,7 @@ const seed = async () => {
 
     const bcaSem1Students = studentList.filter((s) => s.departmentId === deptBCA._id && s.semester === 1);
     const bbaSem1Students = studentList.filter((s) => s.departmentId === deptBBA._id && s.semester === 1);
-    const itSem1Students  = studentList.filter((s) => s.departmentId === deptBSCIT._id && s.semester === 1);
+    const itSem1Students = studentList.filter((s) => s.departmentId === deptBSCIT._id && s.semester === 1);
 
     // --- BCA-101: DBMS Sessions (10 sessions by Prof. Meena Joshi) ---
     const dbmsTopics = [

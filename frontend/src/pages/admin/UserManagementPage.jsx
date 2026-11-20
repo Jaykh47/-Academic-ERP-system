@@ -15,8 +15,6 @@ import {
   Shield,
   GraduationCap,
   Briefcase,
-  ToggleLeft,
-  ToggleRight,
   Building2,
   BookOpen,
   Calendar,
@@ -27,6 +25,11 @@ import {
   ChevronRight,
   UserCheck,
   UserX,
+  Layers,
+  Terminal,
+  Sparkles,
+  Check,
+  CheckCircle2,
 } from "lucide-react";
 
 export const UserManagementPage = () => {
@@ -80,59 +83,51 @@ export const UserManagementPage = () => {
     departmentId: "",
   });
 
-  // Fetch all departments, sessions, students, faculty, and admins
-  const loadDirectoryData = async () => {
+  // Fetch all core user and organizational data
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const [deptRes, sessRes, studRes, facRes, userRes] = await Promise.allSettled([
+      const [deptRes, sessRes, studRes, facRes, adminRes] = await Promise.allSettled([
         adminApi.getDepartments(),
         adminApi.getSessions(),
-        adminApi.getStudents({ limit: 500 }),
-        adminApi.getFaculty({ limit: 500 }),
-        adminApi.getUsers({ role: "admin", limit: 100 }),
+        adminApi.getStudents({ limit: 200 }),
+        adminApi.getFaculty({ limit: 100 }),
+        adminApi.getUsers({ role: "admin", limit: 50 }),
       ]);
 
       if (deptRes.status === "fulfilled") {
-        const depts = deptRes.value?.data?.departments || [];
-        setDepartments(depts);
-        if (depts.length > 0) {
-          setStudentForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
-          setFacultyForm((prev) => ({ ...prev, departmentId: depts[0]._id }));
-        }
+        setDepartments(deptRes.value?.data?.departments || []);
       }
-
       if (sessRes.status === "fulfilled") {
-        const sessList = sessRes.value?.data?.sessions || [];
-        setSessions(sessList);
-        const curr = sessList.find((s) => s.isCurrent) || sessList[0];
-        if (curr) {
-          setStudentForm((prev) => ({ ...prev, admissionSessionId: curr._id }));
+        const sList = sessRes.value?.data?.sessions || [];
+        setSessions(sList);
+        // Default to active session if available
+        const cur = sList.find((s) => s.isCurrent) || sList[0];
+        if (cur) {
+          setStudentForm((prev) => ({ ...prev, admissionSessionId: cur._id }));
         }
       }
-
       if (studRes.status === "fulfilled") {
         setStudents(studRes.value?.data?.students || []);
       }
-
       if (facRes.status === "fulfilled") {
         setFaculty(facRes.value?.data?.faculty || []);
       }
-
-      if (userRes.status === "fulfilled") {
-        setAdmins(userRes.value?.data?.users || []);
+      if (adminRes.status === "fulfilled") {
+        setAdmins(adminRes.value?.data?.users || []);
       }
     } catch (err) {
-      error(formatApiError(err, "Failed to load directory"));
+      error(formatApiError(err, "Failed to load user directory data"));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDirectoryData();
+    fetchData();
   }, []);
 
-  // Compute departmental statistics
+  // Compute departmental staff/student count badges
   const getDeptStats = (deptId) => {
     if (deptId === "all") {
       return {
@@ -150,8 +145,12 @@ export const UserManagementPage = () => {
         total: admins.length,
       };
     }
-    const staffCount = faculty.filter((f) => f.departmentId?._id === deptId).length;
-    const studentCount = students.filter((s) => s.departmentId?._id === deptId).length;
+    const staffCount = faculty.filter(
+      (f) => (f.departmentId?._id || f.departmentId) === deptId
+    ).length;
+    const studentCount = students.filter(
+      (s) => (s.departmentId?._id || s.departmentId) === deptId
+    ).length;
     return {
       staff: staffCount,
       students: studentCount,
@@ -160,200 +159,196 @@ export const UserManagementPage = () => {
     };
   };
 
-  // Get active department metadata
+  // Find active department object
   const activeDepartment = useMemo(() => {
     if (selectedDeptId === "all") return { name: "All Academic Departments", code: "ALL" };
-    if (selectedDeptId === "admin") return { name: "System Administration & Security", code: "ADMIN" };
-    return departments.find((d) => d._id === selectedDeptId) || null;
+    if (selectedDeptId === "admin") return { name: "System Administration", code: "ADMIN" };
+    return departments.find((d) => d._id === selectedDeptId) || { name: "Department", code: "DEPT" };
   }, [selectedDeptId, departments]);
 
-  // Dynamic list based on Department + Section + Search + Filters
+  // Filtered records based on:
+  // 1. Department selection
+  // 2. Staff vs Student vs Admin section
+  // 3. Search query
+  // 4. Status filter
+  // 5. Semester filter
   const filteredRecords = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    let list = [];
 
     if (activeSection === "staff") {
-      return faculty.filter((f) => {
-        if (selectedDeptId !== "all" && f.departmentId?._id !== selectedDeptId) {
-          return false;
-        }
-        if (statusFilter === "active" && !f.userId?.isActive) return false;
-        if (statusFilter === "inactive" && f.userId?.isActive) return false;
-        if (q) {
-          const name = (f.userId?.name || "").toLowerCase();
-          const email = (f.userId?.email || "").toLowerCase();
-          const empId = (f.employeeId || "").toLowerCase();
-          const desig = (f.designation || "").toLowerCase();
-          return name.includes(q) || email.includes(q) || empId.includes(q) || desig.includes(q);
-        }
-        return true;
+      list = faculty.map((f) => ({
+        ...f,
+        _itemType: "faculty",
+      }));
+      if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
+        list = list.filter(
+          (f) => (f.departmentId?._id || f.departmentId) === selectedDeptId
+        );
+      }
+    } else if (activeSection === "student") {
+      list = students.map((s) => ({
+        ...s,
+        _itemType: "student",
+      }));
+      if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
+        list = list.filter(
+          (s) => (s.departmentId?._id || s.departmentId) === selectedDeptId
+        );
+      }
+      if (semesterFilter) {
+        list = list.filter((s) => Number(s.currentSemester) === Number(semesterFilter));
+      }
+    } else if (activeSection === "admin") {
+      list = admins.map((a) => ({
+        ...a,
+        _itemType: "admin",
+        userId: a,
+      }));
+    }
+
+    // Apply Search
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((item) => {
+        const u = item.userId || item;
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const roll = (item.rollNumber || "").toLowerCase();
+        const emp = (item.employeeId || "").toLowerCase();
+        return name.includes(q) || email.includes(q) || roll.includes(q) || emp.includes(q);
       });
     }
 
-    if (activeSection === "student") {
-      return students.filter((s) => {
-        if (selectedDeptId !== "all" && s.departmentId?._id !== selectedDeptId) {
-          return false;
-        }
-        if (statusFilter === "active" && !s.userId?.isActive) return false;
-        if (statusFilter === "inactive" && s.userId?.isActive) return false;
-        if (semesterFilter && s.currentSemester !== parseInt(semesterFilter, 10)) {
-          return false;
-        }
-        if (q) {
-          const name = (s.userId?.name || "").toLowerCase();
-          const email = (s.userId?.email || "").toLowerCase();
-          const roll = (s.rollNumber || "").toLowerCase();
-          const enroll = (s.enrollmentNumber || "").toLowerCase();
-          return name.includes(q) || email.includes(q) || roll.includes(q) || enroll.includes(q);
-        }
-        return true;
+    // Apply Status Filter
+    if (statusFilter !== "all") {
+      const isAct = statusFilter === "active";
+      list = list.filter((item) => {
+        const u = item.userId || item;
+        return u.isActive === isAct;
       });
     }
 
-    if (activeSection === "admin") {
-      return admins.filter((a) => {
-        if (statusFilter === "active" && !a.isActive) return false;
-        if (statusFilter === "inactive" && a.isActive) return false;
-        if (q) {
-          const name = (a.name || "").toLowerCase();
-          const email = (a.email || "").toLowerCase();
-          return name.includes(q) || email.includes(q);
-        }
-        return true;
-      });
-    }
-
-    return [];
+    return list;
   }, [faculty, students, admins, activeSection, selectedDeptId, search, statusFilter, semesterFilter]);
 
-  // Toggle account status
-  const handleToggleStatus = async (userId, e) => {
+  // Toggle user active/inactive status
+  const handleToggleStatus = async (targetUserId, e) => {
     if (e) e.stopPropagation();
     try {
-      await adminApi.toggleUserStatus(userId);
-
-      // Optimistically update all lists
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.userId?._id === userId
-            ? { ...s, userId: { ...s.userId, isActive: !s.userId.isActive } }
-            : s
-        )
-      );
-      setFaculty((prev) =>
-        prev.map((f) =>
-          f.userId?._id === userId
-            ? { ...f, userId: { ...f.userId, isActive: !f.userId.isActive } }
-            : f
-        )
-      );
-      setAdmins((prev) =>
-        prev.map((a) => (a._id === userId ? { ...a, isActive: !a.isActive } : a))
+      const res = await adminApi.toggleUserStatus(targetUserId);
+      const updatedUser = res.data?.user;
+      success(
+        `User ${updatedUser?.name || "account"} is now ${
+          updatedUser?.isActive ? "ACTIVE" : "INACTIVE"
+        }`
       );
 
-      // Update active detail modal if open
+      // Local state update
+      const updateList = (list) =>
+        list.map((item) => {
+          if (item.userId && (item.userId._id === targetUserId || item.userId === targetUserId)) {
+            return {
+              ...item,
+              userId: {
+                ...(typeof item.userId === "object" ? item.userId : {}),
+                isActive: updatedUser.isActive,
+              },
+            };
+          }
+          if (item._id === targetUserId) {
+            return { ...item, isActive: updatedUser.isActive };
+          }
+          return item;
+        });
+
+      setStudents((prev) => updateList(prev));
+      setFaculty((prev) => updateList(prev));
+      setAdmins((prev) => updateList(prev));
+
       if (selectedUserDetail) {
-        const detailUserId = selectedUserDetail.userId?._id || selectedUserDetail._id;
-        if (detailUserId === userId) {
-          setSelectedUserDetail((prev) => {
-            if (prev.userId) {
-              return { ...prev, userId: { ...prev.userId, isActive: !prev.userId.isActive } };
-            }
-            return { ...prev, isActive: !prev.isActive };
-          });
+        const curUserObj = selectedUserDetail.userId || selectedUserDetail;
+        if (curUserObj._id === targetUserId) {
+          setSelectedUserDetail((prev) => ({
+            ...prev,
+            userId: {
+              ...(typeof prev.userId === "object" ? prev.userId : {}),
+              isActive: updatedUser.isActive,
+            },
+            isActive: updatedUser.isActive,
+          }));
         }
       }
-
-      success("Account authorization updated successfully!");
     } catch (err) {
-      error(formatApiError(err, "Failed to update account status"));
+      error(formatApiError(err, "Failed to toggle account authorization"));
     }
   };
 
-  // Open modals pre-configured with active department
+  // Open Add Student Modal
   const handleOpenStudentModal = () => {
-    if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
-      setStudentForm((prev) => ({ ...prev, departmentId: selectedDeptId }));
-    }
+    const curDept = departments.find((d) => d._id === selectedDeptId) || departments[0];
+    const curSess = sessions.find((s) => s.isCurrent) || sessions[0];
+    setStudentForm({
+      name: "",
+      email: "",
+      password: "",
+      rollNumber: "",
+      enrollmentNumber: "",
+      departmentId: curDept?._id || "",
+      admissionSessionId: curSess?._id || "",
+      admissionYear: new Date().getFullYear(),
+      currentSemester: 1,
+    });
     setIsStudentModalOpen(true);
   };
 
+  // Open Add Faculty Modal
   const handleOpenFacultyModal = () => {
-    if (selectedDeptId !== "all" && selectedDeptId !== "admin") {
-      setFacultyForm((prev) => ({ ...prev, departmentId: selectedDeptId }));
-    }
+    const curDept = departments.find((d) => d._id === selectedDeptId) || departments[0];
+    setFacultyForm({
+      name: "",
+      email: "",
+      password: "",
+      role: "faculty",
+      employeeId: "",
+      designation: "Assistant Professor",
+      departmentId: curDept?._id || "",
+    });
     setIsFacultyModalOpen(true);
   };
 
+  // Submit Add Student
   const handleCreateStudent = async (e) => {
     e.preventDefault();
-    if (!studentForm.departmentId) {
-      warning("Please select a department.");
-      return;
-    }
-    if (!studentForm.admissionSessionId) {
-      warning("Please select an admission session.");
-      return;
-    }
-
     try {
       setSubmitting(true);
-      await adminApi.createStudent({
-        ...studentForm,
-        admissionYear: parseInt(studentForm.admissionYear, 10),
-        currentSemester: parseInt(studentForm.currentSemester, 10),
-      });
-      success("Student account created successfully!");
+      await adminApi.createStudent(studentForm);
+      success(`Student ${studentForm.name} provisioned successfully!`);
       setIsStudentModalOpen(false);
-      setStudentForm({
-        name: "",
-        email: "",
-        password: "",
-        rollNumber: "",
-        enrollmentNumber: "",
-        departmentId: departments[0]?._id || "",
-        admissionSessionId: sessions[0]?._id || "",
-        admissionYear: new Date().getFullYear(),
-        currentSemester: 1,
-      });
-      loadDirectoryData();
+      fetchData();
     } catch (err) {
-      error(formatApiError(err, "Failed to create student"));
+      error(formatApiError(err, "Failed to provision student account"));
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Submit Add Faculty
   const handleCreateFaculty = async (e) => {
     e.preventDefault();
-    if (!facultyForm.departmentId) {
-      warning("Please select a department.");
-      return;
-    }
-
     try {
       setSubmitting(true);
       await adminApi.createFaculty(facultyForm);
-      success("Faculty account created successfully!");
+      success(`Faculty member ${facultyForm.name} provisioned successfully!`);
       setIsFacultyModalOpen(false);
-      setFacultyForm({
-        name: "",
-        email: "",
-        password: "",
-        role: "faculty",
-        employeeId: "",
-        designation: "Assistant Professor",
-        departmentId: departments[0]?._id || "",
-      });
-      loadDirectoryData();
+      fetchData();
     } catch (err) {
-      error(formatApiError(err, "Failed to create faculty"));
+      error(formatApiError(err, "Failed to provision faculty account"));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Switch department handler
+  // When clicking department card
   const handleSelectDepartment = (deptId) => {
     setSelectedDeptId(deptId);
     if (deptId === "admin") {
@@ -367,45 +362,51 @@ export const UserManagementPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── Top Header & Provisioning Action Buttons ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── Top Header & Provisioning Action Controls ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1 border-b border-white/[0.06]">
         <div>
-          <h1 className="text-2xl font-extrabold text-alice tracking-tight">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-teal-400" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-semibold">
+              INSTITUTIONAL DIRECTORY // ACCESS CONTROL
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
             User Directory & Access Control
           </h1>
-          <p className="text-xs text-alice-muted mt-1">
-            Organized departmental directory: navigate by department, toggle between staff and student sections, and manage login authorization.
+          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+            Hierarchical academic governance: browse department rosters, inspect credential dossiers, and manage authentication privileges.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start md:self-auto">
+        <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
           <button
             onClick={handleOpenStudentModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-downy-hover shadow-lg shadow-downy/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)] cursor-pointer active:scale-[0.98]"
           >
-            <GraduationCap className="w-4 h-4" />
-            <span>Add Student</span>
+            <GraduationCap className="w-3.5 h-3.5 text-[#080B11]" />
+            <span>Provision Student</span>
           </button>
 
           <button
             onClick={handleOpenFacultyModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-melrose-light shadow-lg shadow-melrose/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#111726] hover:bg-[#182135] text-slate-200 hover:text-white border border-white/[0.1] hover:border-white/20 font-medium text-xs transition-all shadow-sm cursor-pointer active:scale-[0.98]"
           >
-            <Briefcase className="w-4 h-4" />
-            <span>Add Faculty</span>
+            <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+            <span>Provision Faculty</span>
           </button>
         </div>
       </div>
 
-      {/* ── LEVEL 1: DEPARTMENTS SELECTOR ── */}
+      {/* ── LEVEL 1: ARCHITECTURAL DEPARTMENT SELECTOR ── */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-alice-muted flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-downy" />
-            Select Academic Department
+          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <Building2 className="w-3.5 h-3.5 text-teal-400" />
+            SELECT ACADEMIC DEPARTMENT
           </span>
-          <span className="text-[11px] text-alice-dim">
-            {departments.length} Academic Departments Configured
+          <span className="text-[11px] font-mono text-slate-500">
+            {departments.length} ACTIVE DEPARTMENTS
           </span>
         </div>
 
@@ -418,34 +419,45 @@ export const UserManagementPage = () => {
               <button
                 type="button"
                 onClick={() => handleSelectDepartment("all")}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                className={`relative p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                   isSelected
-                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
-                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                    ? "bg-[#0E1626] border-teal-500/50 shadow-[0_4px_20px_-2px_rgba(20,184,166,0.15),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+                    : "bg-[#0D121D]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#111724]"
                 }`}
               >
+                {/* Active indicator bar */}
+                {isSelected && (
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-teal-400 rounded-t-xl" />
+                )}
+
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <div
-                      className={`p-2 rounded-xl ${
-                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-downy"
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs font-bold border ${
+                        isSelected
+                          ? "bg-teal-500/15 text-teal-300 border-teal-500/30"
+                          : "bg-white/[0.04] text-slate-400 border-white/10"
                       }`}
                     >
-                      <Building2 className="w-4 h-4" />
+                      ALL
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-alice-muted border border-charcoal-border">
-                        ALL
+                      <h4 className="text-xs font-bold text-white tracking-tight">
+                        All Departments
+                      </h4>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        Entire College Campus
                       </span>
-                      <h4 className="text-sm font-bold text-alice mt-0.5">All Departments</h4>
                     </div>
                   </div>
-                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_#2dd4bf]" />
+                  )}
                 </div>
 
-                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
+                <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
                   <span>{allStats.staff} Staff</span>
-                  <span>•</span>
+                  <span className="text-slate-600">•</span>
                   <span>{allStats.students} Students</span>
                 </div>
               </button>
@@ -461,37 +473,46 @@ export const UserManagementPage = () => {
                 key={d._id}
                 type="button"
                 onClick={() => handleSelectDepartment(d._id)}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                className={`relative p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                   isSelected
-                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
-                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                    ? "bg-[#0E1626] border-teal-500/50 shadow-[0_4px_20px_-2px_rgba(20,184,166,0.15),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+                    : "bg-[#0D121D]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#111724]"
                 }`}
               >
+                {/* Active indicator bar */}
+                {isSelected && (
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-teal-400 rounded-t-xl" />
+                )}
+
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <div
-                      className={`p-2 rounded-xl ${
-                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-melrose"
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs font-bold border ${
+                        isSelected
+                          ? "bg-teal-500/15 text-teal-300 border-teal-500/30"
+                          : "bg-white/[0.04] text-slate-400 border-white/10"
                       }`}
                     >
-                      <BookOpen className="w-4 h-4" />
+                      {d.code}
                     </div>
-                    <div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20 font-bold">
-                        {d.code}
-                      </span>
-                      <h4 className="text-xs font-bold text-alice mt-0.5 line-clamp-1" title={d.name}>
+                    <div className="overflow-hidden">
+                      <h4 className="text-xs font-bold text-white tracking-tight truncate max-w-[130px]" title={d.name}>
                         {d.name}
                       </h4>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        Dept Code: {d.code}
+                      </span>
                     </div>
                   </div>
-                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_#2dd4bf]" />
+                  )}
                 </div>
 
-                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
-                  <span className="text-melrose font-semibold">{stats.staff} Staff</span>
-                  <span>•</span>
-                  <span className="text-jonquil font-semibold">{stats.students} Students</span>
+                <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <span className="text-indigo-300">{stats.staff} Staff</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-amber-300">{stats.students} Students</span>
                 </div>
               </button>
             );
@@ -505,34 +526,44 @@ export const UserManagementPage = () => {
               <button
                 type="button"
                 onClick={() => handleSelectDepartment("admin")}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                className={`relative p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                   isSelected
-                    ? "bg-downy/15 border-downy shadow-lg shadow-downy/10"
-                    : "bg-charcoal-card border-charcoal-border hover:border-downy/40 hover:bg-charcoal-elevated"
+                    ? "bg-[#0E1626] border-teal-500/50 shadow-[0_4px_20px_-2px_rgba(20,184,166,0.15),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+                    : "bg-[#0D121D]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#111724]"
                 }`}
               >
+                {isSelected && (
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-teal-400 rounded-t-xl" />
+                )}
+
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <div
-                      className={`p-2 rounded-xl ${
-                        isSelected ? "bg-downy text-charcoal font-bold" : "bg-charcoal-elevated text-jonquil"
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs font-bold border ${
+                        isSelected
+                          ? "bg-teal-500/15 text-teal-300 border-teal-500/30"
+                          : "bg-white/[0.04] text-slate-400 border-white/10"
                       }`}
                     >
-                      <Shield className="w-4 h-4" />
+                      <Shield className="w-4 h-4 text-teal-400" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-charcoal text-alice-muted border border-charcoal-border">
-                        ADMIN
+                      <h4 className="text-xs font-bold text-white tracking-tight">
+                        Administration
+                      </h4>
+                      <span className="text-[10px] font-mono text-slate-500">
+                        System Level RBAC
                       </span>
-                      <h4 className="text-sm font-bold text-alice mt-0.5">Administration</h4>
                     </div>
                   </div>
-                  {isSelected && <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />}
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_8px_#2dd4bf]" />
+                  )}
                 </div>
 
-                <div className="pt-2 border-t border-charcoal-border/50 flex items-center justify-between text-xs text-alice-muted">
-                  <span className="text-downy font-semibold">{adminStats.admins} System Admin</span>
-                  <span>Role Protected</span>
+                <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <span className="text-teal-300">{adminStats.admins} Administrators</span>
+                  <span className="text-slate-500">Protected</span>
                 </div>
               </button>
             );
@@ -540,44 +571,40 @@ export const UserManagementPage = () => {
         </div>
       </div>
 
-      {/* ── LEVEL 2 & 3 CONTAINER: SECTION SELECTOR & DIRECTORY LIST ── */}
-      <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 shadow-xl space-y-6">
-        {/* Section Header & Subtitle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-charcoal-border/70 gap-4">
+      {/* ── LEVEL 2 & 3 CONTAINER: SECTION CONTROLLER & DIRECTORY DATA ── */}
+      <div className="rounded-xl bg-[#0D121D]/80 backdrop-blur-xl border border-white/[0.07] p-5 shadow-[0_4px_24px_-2px_rgba(0,0,0,0.5)] space-y-5">
+        {/* Section Header & Segmented Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/[0.06] gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-md bg-downy/15 text-downy border border-downy/30 font-bold font-mono">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 font-bold">
                 {activeDepartment?.code || "DEPT"}
               </span>
-              <h2 className="text-lg font-bold text-alice">
+              <h2 className="text-base font-bold text-white tracking-tight">
                 {activeDepartment?.name || "Academic Department"}
               </h2>
             </div>
-            <p className="text-xs text-alice-muted mt-1">
-              Select between Staff or Student section to browse individual accounts.
+            <p className="text-xs text-slate-400 mt-1">
+              Select between Staff or Student section to browse individual roster accounts.
             </p>
           </div>
 
-          {/* ── LEVEL 2: SECTION SELECTOR (STAFF vs STUDENT vs ADMIN) ── */}
-          <div className="flex items-center p-1 rounded-2xl bg-charcoal-elevated border border-charcoal-border/80 self-start sm:self-auto">
+          {/* ── LEVEL 2: SLEEK SEGMENTED SWITCHER ── */}
+          <div className="inline-flex items-center p-1 rounded-lg bg-[#080C14] border border-white/[0.08] self-start sm:self-auto">
             {selectedDeptId !== "admin" && (
               <>
                 <button
                   type="button"
                   onClick={() => setActiveSection("staff")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     activeSection === "staff"
-                      ? "bg-melrose text-charcoal shadow-md shadow-melrose/20"
-                      : "text-alice-muted hover:text-alice"
+                      ? "bg-[#151D2E] text-white shadow-sm border border-white/10 font-semibold"
+                      : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  <Briefcase className="w-3.5 h-3.5" />
+                  <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
                   <span>Faculty & Staff</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
-                      activeSection === "staff" ? "bg-charcoal text-melrose" : "bg-charcoal-card text-alice-dim"
-                    }`}
-                  >
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#0A0E17] text-indigo-300 border border-white/[0.06]">
                     {currentStats.staff}
                   </span>
                 </button>
@@ -585,19 +612,15 @@ export const UserManagementPage = () => {
                 <button
                   type="button"
                   onClick={() => setActiveSection("student")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     activeSection === "student"
-                      ? "bg-downy text-charcoal shadow-md shadow-downy/20"
-                      : "text-alice-muted hover:text-alice"
+                      ? "bg-[#151D2E] text-white shadow-sm border border-white/10 font-semibold"
+                      : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  <GraduationCap className="w-3.5 h-3.5" />
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
                   <span>Student Section</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
-                      activeSection === "student" ? "bg-charcoal text-downy" : "bg-charcoal-card text-alice-dim"
-                    }`}
-                  >
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#0A0E17] text-amber-300 border border-white/[0.06]">
                     {currentStats.students}
                   </span>
                 </button>
@@ -608,19 +631,15 @@ export const UserManagementPage = () => {
               <button
                 type="button"
                 onClick={() => setActiveSection("admin")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeSection === "admin"
-                    ? "bg-jonquil text-charcoal shadow-md shadow-jonquil/20"
-                    : "text-alice-muted hover:text-alice"
+                    ? "bg-[#151D2E] text-white shadow-sm border border-white/10 font-semibold"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <Shield className="w-3.5 h-3.5" />
+                <Shield className="w-3.5 h-3.5 text-teal-400" />
                 <span>Administrators</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
-                    activeSection === "admin" ? "bg-charcoal text-jonquil" : "bg-charcoal-card text-alice-dim"
-                  }`}
-                >
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#0A0E17] text-teal-300 border border-white/[0.06]">
                   {currentStats.admins}
                 </span>
               </button>
@@ -631,7 +650,7 @@ export const UserManagementPage = () => {
         {/* Search & In-Section Filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
@@ -643,7 +662,7 @@ export const UserManagementPage = () => {
                   ? "Search students by name, roll no, email..."
                   : "Search admins by name or email..."
               }
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs outline-none focus:border-downy transition-all"
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50 transition-all placeholder:text-slate-500"
             />
           </div>
 
@@ -653,7 +672,7 @@ export const UserManagementPage = () => {
               <select
                 value={semesterFilter}
                 onChange={(e) => setSemesterFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs font-semibold outline-none focus:border-downy"
+                className="px-2.5 py-1.5 rounded-lg bg-[#080C14] border border-white/[0.08] text-slate-200 text-xs font-mono outline-none focus:border-teal-400/50"
               >
                 <option value="">All Semesters</option>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
@@ -666,11 +685,11 @@ export const UserManagementPage = () => {
 
             {/* Account Status Filter */}
             <div className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-alice-dim" />
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-xs font-semibold outline-none focus:border-downy"
+                className="px-2.5 py-1.5 rounded-lg bg-[#080C14] border border-white/[0.08] text-slate-200 text-xs font-mono outline-none focus:border-teal-400/50"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active Only</option>
@@ -678,47 +697,47 @@ export const UserManagementPage = () => {
               </select>
             </div>
 
-            <span className="text-xs text-alice-dim font-mono hidden md:inline-block">
+            <span className="text-[11px] text-slate-500 font-mono hidden md:inline-block">
               {filteredRecords.length} records
             </span>
           </div>
         </div>
 
-        {/* ── LEVEL 3: NAMES & RECORDS BASED ON SELECTION ── */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-alice">
-            <thead className="bg-charcoal-elevated/70 text-xs uppercase tracking-wider text-alice-muted border-b border-charcoal-border">
+        {/* ── LEVEL 3: TABULAR ROSTER VIEW ── */}
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <table className="w-full text-left text-xs text-slate-200">
+            <thead className="bg-[#080C14] text-[10px] font-mono tracking-widest text-slate-400 uppercase border-b border-white/[0.06]">
               <tr>
-                <th className="py-3 px-4 font-semibold">Name & Email</th>
+                <th className="py-2.5 px-4 font-semibold">User Identity & Email</th>
                 {activeSection === "staff" && (
                   <>
-                    <th className="py-3 px-4 font-semibold">Employee ID</th>
-                    <th className="py-3 px-4 font-semibold">Designation</th>
-                    <th className="py-3 px-4 font-semibold text-center">Department</th>
+                    <th className="py-2.5 px-4 font-semibold">Employee ID</th>
+                    <th className="py-2.5 px-4 font-semibold">Designation</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Department</th>
                   </>
                 )}
                 {activeSection === "student" && (
                   <>
-                    <th className="py-3 px-4 font-semibold">Roll Number</th>
-                    <th className="py-3 px-4 font-semibold text-center">Semester</th>
-                    <th className="py-3 px-4 font-semibold text-center">Department</th>
+                    <th className="py-2.5 px-4 font-semibold">Roll Number</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Semester</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Department</th>
                   </>
                 )}
                 {activeSection === "admin" && (
                   <>
-                    <th className="py-3 px-4 font-semibold text-center">Role Authority</th>
-                    <th className="py-3 px-4 font-semibold text-center">Privileges</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Role Authority</th>
+                    <th className="py-2.5 px-4 font-semibold text-center">Privileges</th>
                   </>
                 )}
-                <th className="py-3 px-4 font-semibold text-center">Status</th>
-                <th className="py-3 px-4 font-semibold text-center">Toggle Access</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Status</th>
+                <th className="py-2.5 px-4 font-semibold text-center">Access Switch</th>
+                <th className="py-2.5 px-4 font-semibold text-right">Dossier</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-charcoal-border/50 text-xs">
+            <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-alice-muted">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     <LoadingSpinner label="Fetching selected departmental directory records..." />
                   </td>
                 </tr>
@@ -733,40 +752,32 @@ export const UserManagementPage = () => {
                     <tr
                       key={item._id || userId}
                       onClick={() => setSelectedUserDetail(item)}
-                      className="hover:bg-charcoal-elevated/40 transition-colors cursor-pointer group"
+                      className="hover:bg-white/[0.02] transition-colors cursor-pointer group"
                     >
                       {/* Name & Email */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border ${
-                              role === "admin"
-                                ? "bg-downy/15 text-downy border-downy/30"
-                                : role === "faculty" || role === "hod"
-                                ? "bg-melrose/15 text-melrose border-melrose/30"
-                                : "bg-jonquil/15 text-[#bfd948] border-jonquil/30"
-                            }`}
-                          >
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-mono font-bold text-xs text-slate-300 shrink-0">
                             {userObj.avatar ? (
                               <img
                                 src={userObj.avatar}
                                 alt={userObj.name}
-                                className="w-full h-full object-cover rounded-xl"
+                                className="w-full h-full object-cover rounded-lg"
                               />
                             ) : (
                               userObj.name?.charAt(0)?.toUpperCase() || "U"
                             )}
                           </div>
                           <div>
-                            <div className="font-bold text-alice group-hover:text-downy transition-colors flex items-center gap-1.5">
+                            <div className="font-semibold text-white group-hover:text-teal-300 transition-colors flex items-center gap-1.5">
                               <span>{userObj.name}</span>
                               {role === "hod" && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-melrose/20 text-melrose font-mono">
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono font-bold">
                                   HOD
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] font-mono text-alice-dim mt-0.5">
+                            <div className="text-[11px] font-mono text-slate-400 mt-0.5">
                               {userObj.email}
                             </div>
                           </div>
@@ -776,14 +787,14 @@ export const UserManagementPage = () => {
                       {/* Staff Specific Columns */}
                       {activeSection === "staff" && (
                         <>
-                          <td className="py-3.5 px-4 font-mono font-bold text-alice">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-200">
                             {item.employeeId || "FAC-N/A"}
                           </td>
-                          <td className="py-3.5 px-4 text-alice-muted font-medium">
+                          <td className="py-3 px-4 text-slate-300 font-medium">
                             {item.designation || "Faculty Member"}
                           </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20">
+                          <td className="py-3 px-4 text-center">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#080C14] text-teal-300 border border-white/[0.08]">
                               {item.departmentId?.code || "N/A"}
                             </span>
                           </td>
@@ -793,14 +804,14 @@ export const UserManagementPage = () => {
                       {/* Student Specific Columns */}
                       {activeSection === "student" && (
                         <>
-                          <td className="py-3.5 px-4 font-mono font-bold text-alice">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-200">
                             {item.rollNumber}
                           </td>
-                          <td className="py-3.5 px-4 text-center font-semibold text-downy">
+                          <td className="py-3 px-4 text-center font-mono font-semibold text-amber-300">
                             Sem {item.currentSemester}
                           </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-charcoal text-downy border border-downy/20">
+                          <td className="py-3 px-4 text-center">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#080C14] text-teal-300 border border-white/[0.08]">
                               {item.departmentId?.code || "N/A"}
                             </span>
                           </td>
@@ -810,55 +821,53 @@ export const UserManagementPage = () => {
                       {/* Admin Specific Columns */}
                       {activeSection === "admin" && (
                         <>
-                          <td className="py-3.5 px-4 text-center">
+                          <td className="py-3 px-4 text-center">
                             <Badge variant="downy">SUPER ADMIN</Badge>
                           </td>
-                          <td className="py-3.5 px-4 text-center text-alice-muted">
-                            Full RBAC Authorization
+                          <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">
+                            Full RBAC Scope
                           </td>
                         </>
                       )}
 
                       {/* Account Status Badge */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3 px-4 text-center">
                         <Badge variant={isActive ? "success" : "danger"}>
                           {isActive ? "ACTIVE" : "INACTIVE"}
                         </Badge>
                       </td>
 
-                      {/* Toggle Access Switch */}
-                      <td className="py-3.5 px-4 text-center">
+                      {/* Modern iOS-style Access Switch */}
+                      <td className="py-3 px-4 text-center">
                         {role !== "admin" ? (
                           <button
                             type="button"
                             onClick={(e) => handleToggleStatus(userId, e)}
-                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                              isActive
-                                ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:scale-105"
-                                : "bg-downy/10 border-downy/20 text-downy hover:bg-downy/20 hover:scale-105"
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              isActive ? "bg-teal-500" : "bg-slate-700"
                             }`}
                             title={isActive ? "Deactivate Login Access" : "Activate Login Access"}
                           >
-                            {isActive ? (
-                              <ToggleRight className="w-5 h-5" />
-                            ) : (
-                              <ToggleLeft className="w-5 h-5" />
-                            )}
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ${
+                                isActive ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
                           </button>
                         ) : (
-                          <span className="text-alice-dim text-[11px] font-mono">Protected</span>
+                          <span className="text-slate-500 text-[10px] font-mono">Protected</span>
                         )}
                       </td>
 
-                      {/* Details Button */}
-                      <td className="py-3.5 px-4 text-right">
+                      {/* Dossier Button */}
+                      <td className="py-3 px-4 text-right">
                         <button
                           type="button"
                           onClick={() => setSelectedUserDetail(item)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-charcoal-elevated border border-charcoal-border hover:border-downy text-alice-muted hover:text-alice text-xs font-semibold transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white text-[11px] font-mono transition-all cursor-pointer"
                         >
-                          <Eye className="w-3.5 h-3.5 text-downy" />
-                          <span>View</span>
+                          <Eye className="w-3 h-3 text-teal-400" />
+                          <span>Dossier</span>
                         </button>
                       </td>
                     </tr>
@@ -866,11 +875,11 @@ export const UserManagementPage = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-alice-muted">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
-                      <Users className="w-8 h-8 text-alice-dim/50" />
-                      <p className="font-semibold text-alice">No matching records found</p>
-                      <p className="text-xs text-alice-dim max-w-sm">
+                      <Users className="w-7 h-7 text-slate-600" />
+                      <p className="font-semibold text-white">No matching records found</p>
+                      <p className="text-xs text-slate-500 max-w-sm">
                         There are currently no {activeSection === "staff" ? "staff members" : activeSection === "student" ? "students" : "users"} registered under this department filter.
                       </p>
                     </div>
@@ -882,13 +891,13 @@ export const UserManagementPage = () => {
         </div>
       </div>
 
-      {/* ── USER PROFILE DETAIL MODAL / DRAWER ── */}
+      {/* ── USER PROFILE DOSSIER MODAL / INSPECTOR ── */}
       {selectedUserDetail && (
         <Modal
           isOpen={!!selectedUserDetail}
           onClose={() => setSelectedUserDetail(null)}
-          title="Account Profile & Details"
-          subtitle="Complete record of selected academic entity"
+          title="Account Profile & Dossier"
+          subtitle="Complete institutional credential and academic profile"
           maxWidth="max-w-lg"
         >
           {(() => {
@@ -899,46 +908,30 @@ export const UserManagementPage = () => {
             const role = userObj.role || (isStudent ? "student" : "faculty");
 
             return (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {/* User Header Card */}
-                <div className="p-4 rounded-2xl bg-charcoal-elevated border border-charcoal-border flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-[#080C14] border border-white/[0.08] flex items-center justify-between">
                   <div className="flex items-center gap-3.5">
-                    <div
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl border shrink-0 ${
-                        role === "admin"
-                          ? "bg-downy/15 text-downy border-downy/30"
-                          : role === "faculty" || role === "hod"
-                          ? "bg-melrose/15 text-melrose border-melrose/30"
-                          : "bg-jonquil/15 text-[#bfd948] border-jonquil/30"
-                      }`}
-                    >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-mono font-bold text-lg text-teal-300 shrink-0">
                       {userObj.avatar ? (
                         <img
                           src={userObj.avatar}
                           alt={userObj.name}
-                          className="w-full h-full object-cover rounded-2xl"
+                          className="w-full h-full object-cover rounded-xl"
                         />
                       ) : (
                         userObj.name?.charAt(0)?.toUpperCase() || "U"
                       )}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-alice">{userObj.name}</h3>
-                      <p className="text-xs font-mono text-alice-dim">{userObj.email}</p>
+                      <h3 className="text-base font-bold text-white tracking-tight">{userObj.name}</h3>
+                      <p className="text-xs font-mono text-slate-400">{userObj.email}</p>
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Badge
-                          variant={
-                            role === "admin"
-                              ? "downy"
-                              : role === "faculty" || role === "hod"
-                              ? "melrose"
-                              : "jonquil"
-                          }
-                        >
+                        <Badge variant={role === "admin" ? "downy" : role === "faculty" || role === "hod" ? "melrose" : "jonquil"}>
                           {role.toUpperCase()}
                         </Badge>
                         <Badge variant={isActive ? "success" : "danger"}>
-                          {isActive ? "ACTIVE ACCOUNT" : "INACTIVE ACCOUNT"}
+                          {isActive ? "ACTIVE" : "INACTIVE"}
                         </Badge>
                       </div>
                     </div>
@@ -946,26 +939,26 @@ export const UserManagementPage = () => {
                 </div>
 
                 {/* Specific Details Grid */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-2.5 text-xs">
                   {/* Department */}
-                  <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                    <span className="text-[10px] uppercase font-bold text-alice-dim">Department</span>
-                    <p className="font-bold text-alice mt-0.5">
+                  <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                    <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Department</span>
+                    <p className="font-semibold text-white mt-0.5">
                       {selectedUserDetail.departmentId?.name || "System Level"}
                     </p>
                     {selectedUserDetail.departmentId?.code && (
-                      <span className="text-[10px] font-mono text-downy">
+                      <span className="text-[10px] font-mono text-teal-400">
                         Code: {selectedUserDetail.departmentId.code}
                       </span>
                     )}
                   </div>
 
                   {/* Academic / Employment ID */}
-                  <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                    <span className="text-[10px] uppercase font-bold text-alice-dim">
+                  <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                    <span className="text-[10px] uppercase font-mono font-bold text-slate-500">
                       {isStudent ? "Roll Number" : isFaculty ? "Employee ID" : "System ID"}
                     </span>
-                    <p className="font-mono font-bold text-alice mt-0.5">
+                    <p className="font-mono font-bold text-white mt-0.5">
                       {selectedUserDetail.rollNumber || selectedUserDetail.employeeId || "ADMIN-SYS"}
                     </p>
                   </div>
@@ -973,31 +966,31 @@ export const UserManagementPage = () => {
                   {/* Student Specific Details */}
                   {isStudent && (
                     <>
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Current Semester</span>
-                        <p className="font-bold text-downy mt-0.5">
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Current Semester</span>
+                        <p className="font-bold text-amber-300 mt-0.5">
                           Semester {selectedUserDetail.currentSemester}
                         </p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Enrollment No</span>
-                        <p className="font-mono font-bold text-alice mt-0.5">
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Enrollment No</span>
+                        <p className="font-mono font-bold text-white mt-0.5">
                           {selectedUserDetail.enrollmentNumber || "N/A"}
                         </p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Admission Session</span>
-                        <p className="font-bold text-alice mt-0.5">
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Admission Session</span>
+                        <p className="font-semibold text-white mt-0.5">
                           {selectedUserDetail.admissionSessionId?.label || "2024-2025"}
                         </p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Guardian Name</span>
-                        <p className="font-bold text-alice mt-0.5">
-                          {selectedUserDetail.guardianName || "Not provided"}
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Guardian Contact</span>
+                        <p className="font-semibold text-white mt-0.5">
+                          {selectedUserDetail.guardianName || "Not on file"}
                         </p>
                       </div>
                     </>
@@ -1006,16 +999,16 @@ export const UserManagementPage = () => {
                   {/* Faculty Specific Details */}
                   {isFaculty && (
                     <>
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Designation</span>
-                        <p className="font-bold text-melrose mt-0.5">
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Designation</span>
+                        <p className="font-bold text-indigo-300 mt-0.5">
                           {selectedUserDetail.designation || "Assistant Professor"}
                         </p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-charcoal-elevated/50 border border-charcoal-border">
-                        <span className="text-[10px] uppercase font-bold text-alice-dim">Faculty Role</span>
-                        <p className="font-bold text-alice mt-0.5">
+                      <div className="p-3 rounded-lg bg-[#080C14] border border-white/[0.06]">
+                        <span className="text-[10px] uppercase font-mono font-bold text-slate-500">Faculty Role</span>
+                        <p className="font-semibold text-white mt-0.5">
                           {userObj.role === "hod" ? "Head of Department (HOD)" : "Teaching Faculty"}
                         </p>
                       </div>
@@ -1024,41 +1017,41 @@ export const UserManagementPage = () => {
                 </div>
 
                 {/* Account Toggle & Footer Actions */}
-                <div className="pt-3 border-t border-charcoal-border flex items-center justify-between">
+                <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
                   {role !== "admin" ? (
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(userObj._id)}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         isActive
                           ? "bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20"
-                          : "bg-downy/10 border border-downy/30 text-downy hover:bg-downy/20"
+                          : "bg-teal-500/10 border border-teal-500/30 text-teal-300 hover:bg-teal-500/20"
                       }`}
                     >
                       {isActive ? (
                         <>
-                          <UserX className="w-4 h-4 text-rose-400" />
-                          <span>Deactivate User Account</span>
+                          <UserX className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Deactivate Account</span>
                         </>
                       ) : (
                         <>
-                          <UserCheck className="w-4 h-4 text-downy" />
-                          <span>Activate User Account</span>
+                          <UserCheck className="w-3.5 h-3.5 text-teal-400" />
+                          <span>Activate Account</span>
                         </>
                       )}
                     </button>
                   ) : (
-                    <span className="text-xs text-alice-dim font-mono">
-                      Administrator account cannot be deactivated.
+                    <span className="text-xs text-slate-500 font-mono">
+                      Administrator account cannot be modified.
                     </span>
                   )}
 
                   <button
                     type="button"
                     onClick={() => setSelectedUserDetail(null)}
-                    className="px-4 py-2 rounded-xl bg-charcoal-elevated hover:bg-charcoal text-alice text-xs font-bold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-medium cursor-pointer"
                   >
-                    Close
+                    Close Dossier
                   </button>
                 </div>
               </div>
@@ -1072,12 +1065,12 @@ export const UserManagementPage = () => {
         isOpen={isStudentModalOpen}
         onClose={() => setIsStudentModalOpen(false)}
         title="Provision Student Account"
-        subtitle="Creates login credentials and academic student record atomically"
+        subtitle="Generates login credentials and institutional academic ledger record"
       >
-        <form onSubmit={handleCreateStudent} className="space-y-4">
+        <form onSubmit={handleCreateStudent} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-              Full Name
+            <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
+              Full Legal Name
             </label>
             <input
               type="text"
@@ -1085,13 +1078,13 @@ export const UserManagementPage = () => {
               value={studentForm.name}
               onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
               placeholder="e.g. Rahul Verma"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+              className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Institutional Email
               </label>
               <input
@@ -1100,12 +1093,12 @@ export const UserManagementPage = () => {
                 value={studentForm.email}
                 onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
                 placeholder="rahul@student.college.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-                Password
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
+                Initial Password
               </label>
               <input
                 type="password"
@@ -1113,14 +1106,14 @@ export const UserManagementPage = () => {
                 value={studentForm.password}
                 onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
                 placeholder="Student@1234 (min 8 chars)"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Roll Number
               </label>
               <input
@@ -1129,11 +1122,11 @@ export const UserManagementPage = () => {
                 value={studentForm.rollNumber}
                 onChange={(e) => setStudentForm({ ...studentForm, rollNumber: e.target.value })}
                 placeholder="BCA-2026-055"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Enrollment Number
               </label>
               <input
@@ -1142,20 +1135,20 @@ export const UserManagementPage = () => {
                 value={studentForm.enrollmentNumber}
                 onChange={(e) => setStudentForm({ ...studentForm, enrollmentNumber: e.target.value })}
                 placeholder="EN20260055"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Department
               </label>
               <select
                 value={studentForm.departmentId}
                 onChange={(e) => setStudentForm({ ...studentForm, departmentId: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               >
                 {departments.map((d) => (
                   <option key={d._id} value={d._id}>
@@ -1165,13 +1158,13 @@ export const UserManagementPage = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Current Semester
               </label>
               <select
                 value={studentForm.currentSemester}
                 onChange={(e) => setStudentForm({ ...studentForm, currentSemester: parseInt(e.target.value, 10) })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
                   <option key={sem} value={sem}>
@@ -1184,13 +1177,13 @@ export const UserManagementPage = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Admission Academic Session
               </label>
               <select
                 value={studentForm.admissionSessionId}
                 onChange={(e) => setStudentForm({ ...studentForm, admissionSessionId: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               >
                 {sessions.map((s) => (
                   <option key={s._id} value={s._id}>
@@ -1200,7 +1193,7 @@ export const UserManagementPage = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Admission Year
               </label>
               <input
@@ -1210,25 +1203,25 @@ export const UserManagementPage = () => {
                 required
                 value={studentForm.admissionYear}
                 onChange={(e) => setStudentForm({ ...studentForm, admissionYear: parseInt(e.target.value, 10) })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-downy"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-teal-400/50"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.06]">
             <button
               type="button"
               onClick={() => setIsStudentModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white text-xs font-medium cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-downy text-charcoal font-bold text-xs uppercase hover:bg-downy-hover shadow-md shadow-downy/20 cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs cursor-pointer shadow-sm transition-all"
             >
-              {submitting ? "Creating..." : "Save Student"}
+              {submitting ? "Provisioning..." : "Provision Student"}
             </button>
           </div>
         </form>
@@ -1241,10 +1234,10 @@ export const UserManagementPage = () => {
         title="Provision Faculty Account"
         subtitle="Creates instructor account & attaches departmental affiliation"
       >
-        <form onSubmit={handleCreateFaculty} className="space-y-4">
+        <form onSubmit={handleCreateFaculty} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-              Full Name
+            <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
+              Full Legal Name
             </label>
             <input
               type="text"
@@ -1252,13 +1245,13 @@ export const UserManagementPage = () => {
               value={facultyForm.name}
               onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
               placeholder="e.g. Dr. Rajesh Sharma"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+              className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Email Address
               </label>
               <input
@@ -1267,11 +1260,11 @@ export const UserManagementPage = () => {
                 value={facultyForm.email}
                 onChange={(e) => setFacultyForm({ ...facultyForm, email: e.target.value })}
                 placeholder="rajesh@faculty.college.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Password
               </label>
               <input
@@ -1280,14 +1273,14 @@ export const UserManagementPage = () => {
                 value={facultyForm.password}
                 onChange={(e) => setFacultyForm({ ...facultyForm, password: e.target.value })}
                 placeholder="Faculty@1234 (min 8 chars)"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Employee ID
               </label>
               <input
@@ -1296,30 +1289,30 @@ export const UserManagementPage = () => {
                 value={facultyForm.employeeId}
                 onChange={(e) => setFacultyForm({ ...facultyForm, employeeId: e.target.value })}
                 placeholder="FAC-2026-009"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Role
               </label>
               <select
                 value={facultyForm.role}
                 onChange={(e) => setFacultyForm({ ...facultyForm, role: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
               >
                 <option value="faculty">Faculty Member</option>
                 <option value="hod">Head of Department (HOD)</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
+              <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
                 Designation
               </label>
               <select
                 value={facultyForm.designation}
                 onChange={(e) => setFacultyForm({ ...facultyForm, designation: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+                className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
               >
                 <option value="Assistant Professor">Assistant Professor</option>
                 <option value="Associate Professor">Associate Professor</option>
@@ -1332,13 +1325,13 @@ export const UserManagementPage = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-alice-muted uppercase mb-1">
-              Department
+            <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase mb-1">
+              Department Affiliation
             </label>
             <select
               value={facultyForm.departmentId}
               onChange={(e) => setFacultyForm({ ...facultyForm, departmentId: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-charcoal-elevated border border-charcoal-border text-alice text-sm outline-none focus:border-melrose"
+              className="w-full px-3 py-2 rounded-lg bg-[#080C14] border border-white/[0.08] text-white text-xs outline-none focus:border-indigo-400/50"
             >
               {departments.map((d) => (
                 <option key={d._id} value={d._id}>
@@ -1348,20 +1341,20 @@ export const UserManagementPage = () => {
             </select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.06]">
             <button
               type="button"
               onClick={() => setIsFacultyModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-charcoal-elevated text-alice-muted hover:text-alice text-xs font-bold cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white text-xs font-medium cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl bg-melrose text-charcoal font-bold text-xs uppercase hover:bg-melrose-light shadow-md shadow-melrose/20 cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-xs cursor-pointer shadow-sm transition-all"
             >
-              {submitting ? "Creating..." : "Save Faculty"}
+              {submitting ? "Provisioning..." : "Provision Faculty"}
             </button>
           </div>
         </form>

@@ -3,16 +3,16 @@ import React from "react";
 export const LoadingSpinner = ({ size = "md", label = "Loading data..." }) => {
   const sizeClasses = {
     sm: "w-5 h-5 border-2",
-    md: "w-8 h-8 border-3",
-    lg: "w-12 h-12 border-4",
-  }[size] || "w-8 h-8 border-3";
+    md: "w-8 h-8 border-2",
+    lg: "w-10 h-10 border-2",
+  }[size] || "w-8 h-8 border-2";
 
   return (
     <div className="flex flex-col items-center justify-center gap-3 p-8">
       <div
-        className={`${sizeClasses} border-charcoal-border border-t-downy border-r-melrose rounded-full animate-spin shadow-lg shadow-downy/20`}
+        className={`${sizeClasses} border-white/10 border-t-teal-400 border-r-indigo-400 rounded-full animate-spin`}
       />
-      {label && <p className="text-xs font-medium text-alice-muted animate-pulse">{label}</p>}
+      {label && <p className="text-[11px] font-mono text-slate-400 tracking-wide">{label}</p>}
     </div>
   );
 };

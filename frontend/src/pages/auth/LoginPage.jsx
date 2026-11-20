@@ -15,6 +15,9 @@ import {
   UserCheck,
   UserX,
   Loader2,
+  Shield,
+  Layers,
+  Terminal,
 } from "lucide-react";
 
 export const LoginPage = () => {
@@ -79,73 +82,80 @@ export const LoginPage = () => {
           exists: true,
           name: data.name,
           role: data.role,
-          message: `Account verified: ${data.name} (${data.role.toUpperCase()})`,
+          message: data.message,
         });
         setEmailError("");
       } else {
         setAccountInfo({
           exists: false,
-          message: "No account found with this email address.",
+          name: null,
+          role: null,
+          message: data?.message || "No registered account found with this email.",
         });
-        setEmailError("This email address is not registered in the system.");
+        setEmailError("No account found with this email address. Please check spelling.");
       }
-    } catch {
-      // Network or API failure: don't aggressively block user, let submit handle it
+    } catch (err) {
+      // Network or API check error
       setAccountInfo(null);
     } finally {
       setCheckingEmail(false);
     }
   };
 
+  // Handle email changes with debounce
   const handleEmailChange = (e) => {
     const val = e.target.value;
     setEmail(val);
+    setEmailTouched(true);
     setFormError("");
-    setAccountInfo(null);
 
-    const syntaxErr = validateEmailSyntax(val);
-    if (emailTouched) {
-      setEmailError(syntaxErr);
-    }
-
-    // Debounce verification check while typing if valid syntax
+    // Clear debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (!syntaxErr && val.trim().length > 5) {
-      debounceTimerRef.current = setTimeout(() => {
-        verifyEmailWithServer(val);
-      }, 600);
+    const trimmed = val.trim();
+    if (!trimmed) {
+      setEmailError("Email address is required.");
+      setAccountInfo(null);
+      return;
     }
+
+    if (!emailRegex.test(trimmed)) {
+      setEmailError("Please enter a valid email address format.");
+      setAccountInfo(null);
+      return;
+    }
+
+    // Valid syntax: clear syntax error & debounce server check
+    setEmailError("");
+    debounceTimerRef.current = setTimeout(() => {
+      verifyEmailWithServer(trimmed);
+    }, 450);
   };
 
   const handleEmailBlur = () => {
     setEmailTouched(true);
     const syntaxErr = validateEmailSyntax(email);
     setEmailError(syntaxErr);
-
-    if (!syntaxErr && email.trim()) {
-      verifyEmailWithServer(email);
+    if (!syntaxErr && !accountInfo && !checkingEmail) {
+      verifyEmailWithServer(email.trim());
     }
   };
 
   const handlePasswordChange = (e) => {
-    const val = e.target.value;
-    setPassword(val);
+    setPassword(e.target.value);
     setFormError("");
     if (passwordError) {
-      setPasswordError(validatePassword(val));
+      setPasswordError(validatePassword(e.target.value));
     }
   };
 
   const handleManualLogin = async (e) => {
     e.preventDefault();
-    setEmailTouched(true);
 
     const emailErr = validateEmailSyntax(email);
     const passErr = validatePassword(password);
-
     setEmailError(emailErr);
     setPasswordError(passErr);
     setFormError("");
@@ -178,7 +188,6 @@ export const LoginPage = () => {
         "Authentication failed. Please verify your credentials.";
 
       if (status === 404) {
-        // Email does not exist
         setEmailError("No account found with this email address. Please check your email.");
         setAccountInfo({
           exists: false,
@@ -186,11 +195,9 @@ export const LoginPage = () => {
         });
         setFormError(serverMsg);
       } else if (status === 401) {
-        // Password incorrect
         setPasswordError("Incorrect password. Please verify your password and try again.");
         setFormError("Incorrect password. Please verify your credentials.");
       } else if (status === 403) {
-        // Account deactivated
         setFormError(serverMsg);
       } else {
         setFormError(serverMsg);
@@ -204,187 +211,227 @@ export const LoginPage = () => {
   const isEmailValid = emailTouched && !emailError && emailRegex.test(email.trim());
 
   return (
-    <div className="min-h-screen bg-charcoal text-alice flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Ambient background glows */}
-      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-downy/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-melrose/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#080B11] text-[#F8FAFC] flex items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans">
+      {/* Background architectural grid */}
+      <div className="absolute inset-0 bg-grid-subtle opacity-60 pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-charcoal-card border border-charcoal-border text-xs text-alice-muted">
-            <span className="w-2 h-2 rounded-full bg-downy animate-pulse" />
-            <span>Academic ERP & Attendance Suite</span>
+      {/* Main Split Console */}
+      <div className="w-full max-w-4xl relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {/* Left Panel: Institutional Telemetry & Identity */}
+        <div className="lg:col-span-6 space-y-6 hidden lg:block">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D131F] border border-white/[0.08] text-xs font-mono">
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+              <span className="text-slate-300">INSTITUTIONAL GATEWAY</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-teal-400">AY 2025–26</span>
+            </div>
+
+            <h1 className="text-4xl font-extrabold tracking-tight text-white leading-tight">
+              ACADEMIA<span className="text-teal-400 font-mono font-light ml-1">//</span>OS
+            </h1>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Unified institutional intelligence console, role-governed access directory, and UGC CBCS relative examination grading.
+            </p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-alice">
-            Academia<span className="text-downy">Tracker</span>
-          </h1>
-          <p className="text-xs text-alice-muted max-w-xs mx-auto">
-            Official Institutional Portal • Sign in with your registered college account.
-          </p>
+
+          {/* System Telemetry Chips */}
+          <div className="p-4 rounded-xl bg-[#0D121D]/80 border border-white/[0.07] space-y-3">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-slate-500 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-teal-400" />
+                SYSTEM TELEMETRY
+              </span>
+              <span className="text-emerald-400 flex items-center gap-1 text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ALL SYSTEMS OPERATIONAL
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
+                <span className="text-slate-500 text-[10px]">GOVERNANCE</span>
+                <p className="text-slate-200 font-bold mt-0.5">CBCS 10-Point</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
+                <span className="text-slate-500 text-[10px]">SECURITY</span>
+                <p className="text-teal-400 font-bold mt-0.5">TLS 1.3 / RBAC</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
+                <span className="text-slate-500 text-[10px]">IDENTITY</span>
+                <p className="text-slate-200 font-bold mt-0.5">Real-time Check</p>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#080C14] border border-white/[0.04]">
+                <span className="text-slate-500 text-[10px]">ACCREDITATION</span>
+                <p className="text-indigo-400 font-bold mt-0.5">NAAC A++ Ready</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Credentials Form */}
-        <div className="rounded-3xl bg-charcoal-card border border-charcoal-border p-6 sm:p-8 shadow-2xl space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-charcoal-border/70">
-            <div>
-              <h2 className="text-base font-bold text-alice">Account Authentication</h2>
-              <p className="text-xs text-alice-muted mt-0.5">
-                Verify email and enter password to access portal
-              </p>
+        {/* Right Panel: Sleek Authentication Console */}
+        <div className="lg:col-span-6 w-full max-w-md mx-auto">
+          <div className="rounded-xl bg-[#0D121D]/90 backdrop-blur-2xl border border-white/[0.08] p-6 sm:p-8 shadow-[0_4px_30px_-2px_rgba(0,0,0,0.6)] space-y-5">
+            {/* Header */}
+            <div className="pb-3 border-b border-white/[0.06] flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight">
+                  Account Authentication
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Sign in with your registered college credential
+                </p>
+              </div>
+              <div className="p-2 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
             </div>
-            <div className="p-2 rounded-xl bg-downy/10 border border-downy/20 text-downy">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-          </div>
 
-          {/* Form-level error alert */}
-          {formError && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs animate-in fade-in duration-200">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-              <span>{formError}</span>
-            </div>
-          )}
+            {/* Form-level error alert */}
+            {formError && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/25 flex items-start gap-2.5 text-rose-300 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                <span>{formError}</span>
+              </div>
+            )}
 
-          <form onSubmit={handleManualLogin} noValidate className="space-y-4">
-            {/* Email Field */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-alice-muted uppercase tracking-wider">
-                  Email Address
-                </label>
-                {checkingEmail && (
-                  <span className="text-[11px] text-downy flex items-center gap-1 font-medium">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Authenticating email...
-                  </span>
+            <form onSubmit={handleManualLogin} noValidate className="space-y-4">
+              {/* Email Field */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    Institutional Email
+                  </label>
+                  {checkingEmail && (
+                    <span className="text-[11px] text-teal-400 flex items-center gap-1 font-mono">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Verifying...
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
+                    onBlur={handleEmailBlur}
+                    placeholder="name@college.edu"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck="false"
+                    disabled={loading}
+                    className={`w-full pl-9 pr-9 py-2.5 rounded-lg bg-[#080C14] border text-white text-xs outline-none transition-all placeholder:text-slate-600 font-mono ${
+                      emailError || (accountInfo && !accountInfo.exists)
+                        ? "border-rose-500/60 focus:border-rose-500"
+                        : accountInfo?.exists
+                        ? "border-teal-500/60 focus:border-teal-500"
+                        : isEmailValid
+                        ? "border-teal-500/40 focus:border-teal-500"
+                        : "border-white/[0.08] focus:border-teal-400/50"
+                    }`}
+                  />
+
+                  {/* Right Input Status Indicator */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                    {checkingEmail ? (
+                      <Loader2 className="w-4 h-4 text-teal-400 animate-spin" />
+                    ) : accountInfo?.exists ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" title="Account recognized" />
+                    ) : accountInfo && !accountInfo.exists ? (
+                      <UserX className="w-4 h-4 text-rose-400" title="Account not found" />
+                    ) : isEmailValid && !emailError ? (
+                      <CheckCircle2 className="w-4 h-4 text-teal-400/50" />
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Account info pill when verified */}
+                {accountInfo?.exists && (
+                  <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs animate-in fade-in duration-150">
+                    <span className="text-emerald-300 font-medium">{accountInfo.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 uppercase font-bold">
+                      {accountInfo.role}
+                    </span>
+                  </div>
+                )}
+
+                {/* Email error message */}
+                {emailError && (
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1 font-mono">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {emailError}
+                  </p>
                 )}
               </div>
 
-              <div className="relative">
-                <Mail className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
-                  placeholder="name@college.edu"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  spellCheck="false"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-charcoal-elevated border text-alice text-sm outline-none transition-all placeholder:text-alice-dim/60 ${
-                    emailError || (accountInfo && !accountInfo.exists)
-                      ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-                      : accountInfo?.exists
-                      ? "border-downy focus:border-downy focus:ring-1 focus:ring-downy shadow-sm shadow-downy/10"
-                      : isEmailValid
-                      ? "border-downy/50 focus:border-downy focus:ring-1 focus:ring-downy"
-                      : "border-charcoal-border focus:border-downy focus:ring-1 focus:ring-downy"
-                  }`}
-                />
-
-                {/* Right Input Status Indicator */}
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
-                  {checkingEmail ? (
-                    <Loader2 className="w-4 h-4 text-downy animate-spin" />
-                  ) : accountInfo?.exists ? (
-                    <CheckCircle2 className="w-4 h-4 text-downy" title="Account recognized" />
-                  ) : accountInfo && !accountInfo.exists ? (
-                    <UserX className="w-4 h-4 text-rose-400" title="Account not found" />
-                  ) : isEmailValid && !emailError ? (
-                    <CheckCircle2 className="w-4 h-4 text-downy/60" />
-                  ) : null}
+              {/* Password Field */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+                    Password
+                  </label>
                 </div>
-              </div>
 
-              {/* Verified Account Banner */}
-              {accountInfo?.exists && !emailError && (
-                <div className="p-2.5 rounded-xl bg-downy/10 border border-downy/30 flex items-center gap-2 text-downy text-xs font-semibold animate-in fade-in duration-200">
-                  <UserCheck className="w-4 h-4 shrink-0" />
-                  <span>
-                    Account verified: <strong>{accountInfo.name}</strong> ({accountInfo.role.toUpperCase()})
-                  </span>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter account password"
+                    autoComplete="current-password"
+                    disabled={loading}
+                    className={`w-full pl-9 pr-9 py-2.5 rounded-lg bg-[#080C14] border text-white text-xs outline-none transition-all placeholder:text-slate-600 font-mono ${
+                      passwordError
+                        ? "border-rose-500/60 focus:border-rose-500"
+                        : "border-white/[0.08] focus:border-teal-400/50"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              )}
 
-              {/* Email Not Found Banner */}
-              {((accountInfo && !accountInfo.exists) || emailError) && (
-                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1.5 mt-1 animate-in fade-in duration-150">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{emailError || accountInfo?.message}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-alice-muted uppercase tracking-wider">
-                  Password
-                </label>
+                {passwordError && (
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1 font-mono">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {passwordError}
+                  </p>
+                )}
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-alice-dim absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={handlePasswordChange}
-                  placeholder="••••••••••••"
-                  autoComplete="current-password"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-charcoal-elevated border text-alice text-sm outline-none transition-all placeholder:text-alice-dim/60 ${
-                    passwordError
-                      ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-                      : "border-charcoal-border focus:border-downy focus:ring-1 focus:ring-downy"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-alice-dim hover:text-alice transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {passwordError && (
-                <p className="text-[11px] text-rose-400 font-medium flex items-center gap-1 mt-1 animate-in fade-in duration-150">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{passwordError}</span>
-                </p>
-              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || (accountInfo && !accountInfo.exists)}
+                className="w-full py-2.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-[#080B11] font-semibold text-xs tracking-wider uppercase transition-all shadow-[0_1px_3px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_16px_rgba(45,212,191,0.35)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 mt-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Authorizing Session...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Authenticate & Access</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Institutional Seal */}
+            <div className="pt-3 border-t border-white/[0.06] text-center text-[10px] font-mono text-slate-500">
+              UGC CBCS 10-Point Framework • System Protected Instance
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading || checkingEmail}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-downy text-charcoal font-bold text-sm tracking-wide hover:bg-downy-hover shadow-lg shadow-downy/20 hover:shadow-downy/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-charcoal border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span>Sign In to Portal</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Help Notice */}
-          <div className="pt-2 border-t border-charcoal-border/50 text-center">
-            <p className="text-[11px] text-alice-dim leading-relaxed">
-              For account access issues, password resets, or enrollment status, please contact your Academic Administrator or Department Coordinator.
-            </p>
           </div>
         </div>
-
-        {/* Footer info */}
-        <p className="text-center text-[11px] text-alice-dim">
-          MERN Academic ERP • Multi-role RBAC Protected
-        </p>
       </div>
     </div>
   );
