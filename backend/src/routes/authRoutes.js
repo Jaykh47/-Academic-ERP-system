@@ -86,7 +86,14 @@ router.patch("/profile", protect, updateProfile);
 // POST /api/v1/auth/logout
 router.post("/logout", protect, logout);
 
-// PATCH /api/v1/auth/change-password
+// POST & PATCH /api/v1/auth/change-password
+router.post(
+  "/change-password",
+  protect,
+  changePasswordValidation,
+  validate,
+  changePassword
+);
 router.patch(
   "/change-password",
   protect,

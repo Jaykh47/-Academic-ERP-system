@@ -391,52 +391,81 @@ export const getStudentSemesterReportService = async (studentId, semester, acade
   if (!student) throw new ApiError(404, "Student not found.");
 
   // Find all subjects enrolled for this student in this semester/session
-  const enrollments = await Enrollment.find({
+  const filter = {
     studentId: student._id,
     semester,
-    academicSessionId,
     status: "active",
-  }).populate("subjectId");
+  };
+  if (academicSessionId) {
+    filter.academicSessionId = academicSessionId;
+  }
+
+  let enrollments = await Enrollment.find(filter).populate("subjectId");
+
+  // Fallback: if no enrollments matched with academicSessionId, check without academicSessionId
+  if (!enrollments.length && academicSessionId) {
+    enrollments = await Enrollment.find({
+      studentId: student._id,
+      semester,
+      status: "active",
+    }).populate("subjectId");
+  }
+
+  // Filter out any enrollments whose subjectId is missing/deleted
+  enrollments = enrollments.filter((e) => e.subjectId);
 
   if (!enrollments.length) {
-    throw new ApiError(404, `No enrollments found for student in Semester ${semester}.`);
+    throw new ApiError(404, `No active course enrollments found for student in Semester ${semester}.`);
   }
 
   const subjectReports = await Promise.all(
     enrollments.map(async (enrollment) => {
       const subject = enrollment.subjectId;
 
-      // Fetch all marks for this student in this subject & session
-      const studentMarks = await Marks.find({
+      // Fetch all marks for this student in this subject
+      const marksFilter = {
         studentId: student._id,
         subjectId: subject._id,
-        academicSessionId,
-      }).populate("examinationId");
+      };
+      if (academicSessionId) {
+        marksFilter.academicSessionId = academicSessionId;
+      }
+
+      let studentMarks = await Marks.find(marksFilter).populate("examinationId");
+      if (!studentMarks.length && academicSessionId) {
+        studentMarks = await Marks.find({
+          studentId: student._id,
+          subjectId: subject._id,
+        }).populate("examinationId");
+      }
 
       let totalWeightedScore = 0;
       let totalMaxMarks = 0;
       let totalObtainedMarks = 0;
 
-      const examBreakdown = studentMarks.map((m) => {
-        const exam = m.examinationId;
-        const evaluation = calculateGrade(m.obtainedMarks, exam.maximumMarks);
+      const examBreakdown = studentMarks
+        .filter((m) => m.examinationId)
+        .map((m) => {
+          const exam = m.examinationId;
+          const maxMarks = exam.maximumMarks || 100;
+          const evaluation = calculateGrade(m.obtainedMarks, maxMarks);
 
-        totalMaxMarks += exam.maximumMarks;
-        totalObtainedMarks += m.obtainedMarks;
+          totalMaxMarks += maxMarks;
+          totalObtainedMarks += m.obtainedMarks;
 
-        return {
-          examinationName: exam.name,
-          examType: exam.examType,
-          maximumMarks: exam.maximumMarks,
-          passMarks: exam.passMarks,
-          obtainedMarks: m.obtainedMarks,
-          isAbsent: m.isAbsent,
-          percentage: evaluation.percentage,
-          grade: evaluation.grade,
-          gradePoint: evaluation.gradePoint,
-          isPassed: !m.isAbsent && m.obtainedMarks >= exam.passMarks,
-        };
-      });
+          return {
+            examinationName: exam.name || "Assessment",
+            examType: exam.examType || "regular",
+            maximumMarks: maxMarks,
+            passMarks: exam.passMarks || 40,
+            obtainedMarks: m.obtainedMarks,
+            isAbsent: m.isAbsent || false,
+            percentage: evaluation.percentage,
+            grade: evaluation.grade,
+            gradePoint: evaluation.gradePoint,
+            isPassed: !m.isAbsent && m.obtainedMarks >= (exam.passMarks || 40),
+          };
+        });
 
       const overallSubjectEval = calculateGrade(totalObtainedMarks, totalMaxMarks || 100);
 

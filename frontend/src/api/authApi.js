@@ -42,6 +42,9 @@ export const authApi = {
 
   changePassword: async (passwords) => {
     const res = await axiosClient.post("/auth/change-password", passwords);
+    if (res.data?.data?.accessToken) {
+      setAccessToken(res.data.data.accessToken);
+    }
     return res.data;
   },
 

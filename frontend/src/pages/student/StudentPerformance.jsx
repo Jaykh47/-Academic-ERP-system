@@ -49,11 +49,12 @@ export const StudentPerformance = () => {
     try {
       setDownloadingPdf(true);
       await reportApi.downloadMyReportCardPDF(
-        `${user?.name?.replace(/\s+/g, "_")}_Academic_Report.pdf`
+        `${user?.name?.replace(/\s+/g, "_")}_Academic_Report.pdf`,
+        { semester: profile?.currentSemester || 1 }
       );
       success("Report Card PDF generated & downloaded!");
     } catch (err) {
-      error("Failed to download PDF report card.");
+      error(err.message || err.response?.data?.message || "Failed to download PDF report card.");
     } finally {
       setDownloadingPdf(false);
     }

@@ -321,15 +321,18 @@ export const changePassword = async (req, res, next) => {
     user.password = newPassword;
     await user.save();
 
-    // After a password change, invalidate all existing sessions by
-    // clearing the refresh token. User must log in again on other devices.
-    await User.findByIdAndUpdate(user._id, { $unset: { refreshToken: "" } });
-    clearAuthCookies(res);
+    // Re-issue tokens so the current session remains authenticated seamlessly
+    const accessToken = generateAccessToken(user._id, user.role);
+    const refreshToken = generateRefreshToken(user._id);
+    user.refreshToken = hashToken(refreshToken);
+    await user.save({ validateBeforeSave: false });
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(200).json(
       new ApiResponse(
         200,
-        "Password changed successfully. Please log in again with your new password."
+        "Password changed successfully.",
+        { accessToken }
       )
     );
   } catch (error) {

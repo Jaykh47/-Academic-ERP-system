@@ -57,13 +57,13 @@ export const generateStudentReportCardPDF = async (studentId, semester, academic
 
       // ── Student Info Block ────────────────────────────────────────────────
       doc.fontSize(10).font("Helvetica-Bold");
-      doc.text(`Student Name: `, 40, doc.y, { continued: true }).font("Helvetica").text(reportData.student.name);
-      doc.font("Helvetica-Bold").text(`Roll Number:  `, 320, doc.y - 12, { continued: true }).font("Helvetica").text(reportData.student.rollNumber);
+      doc.text(`Student Name: `, 40, doc.y, { continued: true }).font("Helvetica").text(reportData.student.name || "Student");
+      doc.font("Helvetica-Bold").text(`Roll Number:  `, 320, doc.y - 12, { continued: true }).font("Helvetica").text(reportData.student.rollNumber || "N/A");
 
-      doc.font("Helvetica-Bold").text(`Department:   `, 40, doc.y + 4, { continued: true }).font("Helvetica").text(reportData.student.department);
-      doc.font("Helvetica-Bold").text(`Enrollment:   `, 320, doc.y - 12, { continued: true }).font("Helvetica").text(reportData.student.enrollmentNumber);
+      doc.font("Helvetica-Bold").text(`Department:   `, 40, doc.y + 4, { continued: true }).font("Helvetica").text(reportData.student.department || "Academic Department");
+      doc.font("Helvetica-Bold").text(`Enrollment:   `, 320, doc.y - 12, { continued: true }).font("Helvetica").text(reportData.student.enrollmentNumber || "N/A");
 
-      doc.font("Helvetica-Bold").text(`Semester:     `, 40, doc.y + 4, { continued: true }).font("Helvetica").text(`Semester ${reportData.student.semester}`);
+      doc.font("Helvetica-Bold").text(`Semester:     `, 40, doc.y + 4, { continued: true }).font("Helvetica").text(`Semester ${reportData.student.semester || 1}`);
       doc.font("Helvetica-Bold").text(`Result Date:  `, 320, doc.y - 12, { continued: true }).font("Helvetica").text(new Date().toLocaleDateString());
 
       doc.moveDown(1.5);

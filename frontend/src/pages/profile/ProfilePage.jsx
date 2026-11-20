@@ -183,7 +183,7 @@ export const ProfilePage = () => {
 
     try {
       setChangingPassword(true);
-      await authApi.changePassword({ currentPassword, newPassword });
+      await authApi.changePassword({ currentPassword, newPassword, confirmPassword });
       success("Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");

@@ -67,9 +67,9 @@ export const changePasswordValidation = [
     }),
 
   body("confirmPassword")
-    .notEmpty().withMessage("Please confirm your new password")
+    .optional({ checkFalsy: true })
     .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
+      if (value && value !== req.body.newPassword) {
         throw new Error("Passwords do not match");
       }
       return true;
